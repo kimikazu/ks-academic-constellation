@@ -1,0 +1,45 @@
+title: "Research Notes & Link Portfolio"
+description: "Curated links and research notes"
+url: "https://kimikazu.github.io"   # ← change USERNAME
+baseurl: ""
+
+theme: minima
+
+plugins:
+  - jekyll-feed
+  - jekyll-seo-tag
+
+markdown: kramdown
+kramdown:
+  input: GFM
+
+permalink: pretty
+
+collections:
+  notes:
+    output: true
+    permalink: /notes/:name/
+  links:
+    output: true
+    permalink: /links/:name/
+
+defaults:
+  - scope:
+      path: ""
+      type: "notes"
+    values:
+      layout: page
+  - scope:
+      path: ""
+      type: "links"
+    values:
+      layout: page
+
+# Navigation
+include:
+  - _pages
+
+# Minima config (optional tweaks)
+minima:
+  date_format: "%Y-%m-%d"
+  skin: classic
