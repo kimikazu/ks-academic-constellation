@@ -282,6 +282,7 @@ graph TD
 
 ## Legacy–Signposts–Silencesモデル
 ``` mermaid
+%%{init: {'theme': 'forest'}}%%
 mindmap
   root((ADの未来への視座))
     Legacy
