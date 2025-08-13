@@ -1,3 +1,5 @@
+## Researcher-led educational development mapping sample 1
+
 ```mermaid
 mindmap
   root((理論化学＋教育開発の融合))
@@ -75,6 +77,7 @@ mindmap
       参照理論：Donna Qualters／Peter Senge
       統合理論の構築中
 ```
+## Researcher-led educational development mapping sample 2
 
 ``` mermaid
 mindmap
@@ -154,6 +157,8 @@ mindmap
       統合理論の構築中
 ```
 
+## Researcher-led educational development mapping sample 3
+
 ``` mermaid
 mindmap
   root((大学教育開発者としての研究者視点))
@@ -218,6 +223,8 @@ mindmap
       収束よりも探索を重視
 ```
 
+## Holistic Academic Development の二重円モデル
+
 ``` mermaid
 %% Holistic Academic Development 二重円モデル
 graph TB
@@ -255,6 +262,8 @@ graph TB
     classDef domain fill:#fff8dc,stroke:#b8860b,stroke-width:1.5px;
     classDef layer fill:#e6f0ff,stroke:#4682b4,stroke-width:1.5px;
 ```
+
+## Academic Development の現状 from systematic review by Sugrue (2018)
 
 ``` mermaid
 graph TD
