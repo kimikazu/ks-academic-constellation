@@ -1,7 +1,7 @@
 title: "KS Research Notes & Link Portfolio"
 description: "Curated links and research notes"
-url: "https://kimikazu.github.io/"   # ← change USERNAME
-baseurl: ""
+url: "https://kimikazu.github.io"   # ← change USERNAME
+baseurl: "/ks-academic-constellation"
 
 theme: minima
 
