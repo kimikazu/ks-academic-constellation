@@ -217,3 +217,56 @@ mindmap
       次の問いを開く
       収束よりも探索を重視
 ```
+
+``` mermaid
+%% Holistic Academic Development 二重円モデル
+graph TB
+    %% 中心
+    A[Holistic Academic Development<br>包括的学術開発]:::center
+
+    %% 内円（開発領域）
+    B1(教育):::domain
+    B2(研究):::domain
+    B3(リーダーシップ):::domain
+    B4(キャリア形成):::domain
+    B5(ウェルビーイング):::domain
+
+    %% 外円（三層）
+    C1(個人レベル):::layer
+    C2(組織文化レベル):::layer
+    C3(制度・政策レベル):::layer
+
+    %% 接続（内円）
+    A --- B1
+    A --- B2
+    A --- B3
+    A --- B4
+    A --- B5
+
+    %% 接続（外円）
+    B1 --- C1
+    B2 --- C1
+    B3 --- C2
+    B4 --- C2
+    B5 --- C3
+
+    %% スタイル定義
+    classDef center fill:#ffe0b2,stroke:#d2691e,stroke-width:2px;
+    classDef domain fill:#fff8dc,stroke:#b8860b,stroke-width:1.5px;
+    classDef layer fill:#e6f0ff,stroke:#4682b4,stroke-width:1.5px;
+```
+
+``` mermaid
+graph TD
+    A[Academic Developmentの現状と方向性] --> T1[テーマ1：ADの業務と影響]
+    A --> T2[テーマ2：役割変化と業務範囲]
+    A --> T3[テーマ3：地位・アイデンティティ形成と実践コミュニティ]
+    A --> T4[テーマ4：実践の文書化と評価]
+    A --> T5[テーマ5：ADのリーダーシップ]
+
+    T1 -->|拡大する活動領域| C1[個別教員支援→組織変革]
+    T2 -->|多様なステークホルダー連携| C2[戦略立案・制度設計]
+    T3 -->|第三の空間| C3[不安定性と専門性]
+    T4 -->|新たな評価枠組み| C4[物語的手法・eポートフォリオ]
+    T5 -->|政治的感覚を伴う戦略| C5[仲介者・橋渡し役]
+```
