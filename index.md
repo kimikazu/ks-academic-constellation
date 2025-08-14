@@ -2,8 +2,6 @@
 layout: home
 ---
 
-# 研究メモ・リンク集
-
 ## 教育開発
 - [POD Network](https://podnetwork.org/)
 - [ICED](https://icedonline.net/)
