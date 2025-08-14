@@ -1,4 +1,3 @@
-# _links/science.md
 ---
 title: Okuyama Lab
 url: http://okweb.ims.ac.jp/
