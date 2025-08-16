@@ -9,6 +9,12 @@ layout: default
   #chart text{ font-family:"Noto Sans JP",sans-serif; }
 </style>
 
+<div id="chart" style="width:420px; height:420px; margin:auto;"></div>
+
+<!-- d3本体をCDNから -->
+<script src="https://d3js.org/d3.v7.min.js"></script>
+
+<!-- ページ内に直接書く例（Jekyllでそのまま通る） -->
 <script>
 const box = document.getElementById("chart");
 const w = box.clientWidth, h = box.clientHeight, r = Math.min(w,h)/2 - 20;
