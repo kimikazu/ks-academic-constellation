@@ -5,6 +5,10 @@ baseurl: "/ks-academic-constellation"
 
 theme: minima
 
+mermaid: true
+
+use_math: true
+
 plugins:
   - jekyll-feed
   - jekyll-seo-tag
