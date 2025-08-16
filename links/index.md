@@ -20,7 +20,7 @@ Curated link collections by category. <br><br>
       {%- assign final = href | relative_url -%}
     {%- endif -%}
     <li>
-      <a href="{{ final }}" {%- if href contains '://' -%} target="_blank" rel="noopener"{%- endif -%}>{{ item.title }}</a>
+      <a href="{{ final }}" {%- if href contains '://' -%}  target="_blank" rel="noopener"{%- endif -%}>{{ item.title }}</a>
       {%- if item.tags and item.tags.size > 0 -%}
         <small> — 
         {%- for t in item.tags -%}
