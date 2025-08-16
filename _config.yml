@@ -1,3 +1,4 @@
+# --- サイト基本 ---
 title: "KS Research Notes & Link Portfolio"
 description: "Curated links and research notes"
 url: "https://kimikazu.github.io/"   # ← change USERNAME
@@ -5,21 +6,26 @@ baseurl: "/ks-academic-constellation"
 
 theme: minima
 
-mermaid: true
+# --- Markdown/レンダリング ---
+markdown: kramdown
+kramdown:
+  input: GFM
+permalink: pretty
 
+# --- Mermaid & 数式（ページ毎にフラグでON/OFF可）---
+# 使い方: 各ページのFront Matterに mermaid: true / math: true を書く
+# （グローバルに常時ONなら defaults に入れてもOK）
+mermaid: true
 use_math: true
 
+# --- プラグイン（GitHub Pages対応）---
 plugins:
   - jekyll-feed
   - jekyll-sitemap
   - jekyll-seo-tag
-  
-markdown: kramdown
-kramdown:
-  input: GFM
+  - jekyll-include-cache
 
-permalink: pretty
-
+# --- コレクション ---
 collections:
   notes:
     output: true
@@ -48,3 +54,15 @@ include:
 minima:
   date_format: "%Y-%m-%d"
   skin: classic
+  social_links:       # フッターのSNS/外部リンク（必要に応じて）
+    github: kimikazu
+    website: https://sites.google.com/view/ksugimori/
+
+# --- フィード/サイトマップ ---
+feed:
+  collections:
+    - notes
+    - links
+  posts_limit: 50
+
+
