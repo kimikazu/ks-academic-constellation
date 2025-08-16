@@ -13,12 +13,6 @@ plugins:
   - jekyll-feed
   - jekyll-sitemap
   - jekyll-seo-tag
-
-header_pages:
-  - notes.md
-  - links.md
-  - search.md
-  - about.md
   
 markdown: kramdown
 kramdown:
