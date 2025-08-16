@@ -4,7 +4,7 @@ title: Links
 permalink: /links/
 ---
 
-Curated link collections by category. <br>
+Curated link collections by category. <br><br>
 
 
 {%- assign by_category = site.links | group_by: "category" -%}
