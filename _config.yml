@@ -11,6 +11,7 @@ use_math: true
 
 plugins:
   - jekyll-feed
+  - jekyll-sitemap
   - jekyll-seo-tag
 
 markdown: kramdown
