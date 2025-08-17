@@ -1,7 +1,7 @@
 ---
 title: ICED
 href: https://icedonline.net/
-category: Academic_Development
+category: Academic Development
 tags: [international]
 date: 2025-08-10
 ---
