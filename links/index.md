@@ -4,13 +4,14 @@ title: Links
 permalink: /links/
 ---
 
-Curated link collections by category. <br><br>
+Curated link collections by category.
 
 {%- comment -%}
 カテゴリ未設定が混ざっても崩れないようにデフォルトカテゴリを当てる
 {%- endcomment -%}
 {%- assign by_category = site.links | group_by_exp: "i", "i.category | default: 'Uncategorized'" -%}
-{%- for grp in by_category -%}
+{% for grp in by_category %}
+
 ### {{ grp.name }}
 <ul>
   {%- assign items = grp.items | sort: "title" -%}
