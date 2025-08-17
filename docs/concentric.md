@@ -7,6 +7,10 @@ layout: default
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600&display=swap" rel="stylesheet">
 <style>
   #chart text{ font-family:"Noto Sans JP",sans-serif; }
+  /* SVGのクリッピング防止 */
+  #chart svg { overflow: visible; display: block; width: 100%; height: auto; }
+  /* コンテナの最大幅（必要に応じて調整） */
+  #chart { max-width: 640px; margin: 0 auto; }
 </style>
 
 <div id="chart" style="width:420px; height:420px; margin:auto;"></div>
@@ -56,10 +60,10 @@ const addLabel = (txt, rho, theta, opt={}) => {
 addLabel("PD", 0, 0, {anchor:"middle"});
 
 // 右方向に並べる内側ラベル（角度0°、左詰め＝start）
-addLabel("OD",                r*0.30,   0, {anchor:"start"});
-addLabel("個人／教員",        r*0.55,   0, {anchor:"start"});
-addLabel("学部・学科／FD担当", r*0.80,   0, {anchor:"start"});
-addLabel("全学／FD担当・経営層", r*1.05,  0, {anchor:"start"});
+addLabel("OD",                r*0.30, 0, {anchor:"start", dy:"-1.2em"});
+addLabel("個人／教員",        r*0.55, 0, {anchor:"start", dy:"0em"});
+addLabel("学部・学科／FD担当", r*0.80, 0, {anchor:"start", dy:"1.2em"});
+addLabel("全学／FD担当・経営層", r*1.05, 0, {anchor:"start", dy:"2.4em"});
 
 // 象限ラベル（45°ずらすと円と干渉しにくい）
 addLabel("研究",         r*0.93, 135);
