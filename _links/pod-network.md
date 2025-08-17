@@ -1,7 +1,7 @@
 ---
 title: POD Network
 href: https://podnetwork.org/
-category: Academic Development
+category: Academic_Development
 tags: [faculty-development]
 date: 2025-08-10
 ---
