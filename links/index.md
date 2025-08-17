@@ -6,23 +6,28 @@ permalink: /links/
 
 Curated link collections by category. <br><br>
 
-{%- assign by_category = site.links | group_by: "category" -%}
+{%- comment -%}
+カテゴリ未設定が混ざっても崩れないようにデフォルトカテゴリを当てる
+{%- endcomment -%}
+{%- assign by_category = site.links | group_by_exp: "i", "i.category | default: 'Uncategorized'" -%}
 {%- for grp in by_category -%}
 ### {{ grp.name }}
 <ul>
   {%- assign items = grp.items | sort: "title" -%}
   {%- for item in items -%}
     {%- assign href = item.href | default: item.url -%}
-    {%- comment %} 外部か内部かを判定 {% endcomment -%}
-    {%- if href contains '://' -%}
+    {%- assign is_external = href contains '://' -%}
+    {%- if is_external -%}
       {%- assign final = href -%}
+      {%- assign extra = ' target="_blank" rel="noopener"' -%}
     {%- else -%}
       {%- assign final = href | relative_url -%}
+      {%- assign extra = '' -%}
     {%- endif -%}
     <li>
-      <a href="{{ final }}" {%- if href contains '://' -%}  target="_blank" rel="noopener"{%- endif -%}>{{ item.title }}</a>
+      <a href="{{ final }}"{{ extra }}>{{ item.title | default: '(no title)' }}</a>
       {%- if item.tags and item.tags.size > 0 -%}
-        <small> — 
+        <small> —
         {%- for t in item.tags -%}
           <code>{{ t }}</code>{% unless forloop.last %}, {% endunless %}
         {%- endfor -%}
