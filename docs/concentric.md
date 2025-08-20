@@ -1,77 +1,112 @@
 ---
-title: d3 concentric
-layout: default 
+title: Concentric (d3)
+layout: default
 ---
 
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600&display=swap" rel="stylesheet">
 <style>
-  #chart text{ font-family:"Noto Sans JP",sans-serif; }
-  /* SVGのクリッピング防止 */
-  #chart svg { overflow: visible; display: block; width: 100%; height: auto; }
-  /* コンテナの最大幅（必要に応じて調整） */
-  #chart { max-width: 640px; margin: 0 auto; }
+  #chart svg { overflow: visible; display:block; width:100%; height:auto; }
+  #chart { max-width: 680px; margin: 0 auto; }
+  #chart text { font-family: "Noto Sans JP", system-ui, -apple-system, "Segoe UI", sans-serif; fill:#111; }
+  .caption { font-size: 12px; fill:#333; }
+  .ringLabel { font-size: 14px; }
+  .quadLabel { font-size: 14px; }
+  .centerSmall { font-size: 12px; }
 </style>
 
-<div id="chart" style="width:420px; height:420px; margin:auto;"></div>
+<div id="chart"></div>
 
-<!-- d3本体をCDNから -->
 <script src="https://d3js.org/d3.v7.min.js"></script>
-
-<!-- ページ内に直接書く例（Jekyllでそのまま通る） -->
 <script>
-const M = {top:32,right:180,bottom:40,left:180};
-const W = 640, H = 640;
-const innerW = W - M.left - M.right;
-const innerH = H - M.top - M.bottom;
-const r = Math.min(innerW, innerH)/2;
+(function(){
+  // 全体サイズと余白（右に広めの余白をとる）
+  const M = {top:40, right:190, bottom:48, left:190};
+  const W = 760, H = 760;
+  const innerW = W - M.left - M.right;
+  const innerH = H - M.top - M.bottom;
+  const R = Math.min(innerW, innerH) / 2;
 
-const svg = d3.select("#chart").append("svg")
-  .attr("viewBox", `0 0 ${W} ${H}`);
+  const svg = d3.select("#chart").append("svg")
+    .attr("viewBox", `0 0 ${W} ${H}`)
+    .attr("aria-label","Concentric diagram");
 
-const g = svg.append("g")
-  .attr("transform", `translate(${M.left + innerW/2},${M.top + innerH/2})`);
+  const g = svg.append("g")
+    .attr("transform", `translate(${M.left + innerW/2}, ${M.top + innerH/2})`);
 
-// 同心円
-[0.25,0.5,0.75,1.0].forEach(f =>
-  g.append("circle").attr("r", r*f).attr("fill","none").attr("stroke","black")
-);
+  // 円（4リング）
+  const fracs = [0.26, 0.50, 0.74, 0.98];
+  fracs.forEach(f=>{
+    g.append("circle")
+      .attr("r", R*f)
+      .attr("fill","none")
+      .attr("stroke","#222");
+  });
 
-// 十字
-g.append("line").attr("x1",-r).attr("x2", r).attr("y1",0).attr("y2",0).attr("stroke","black");
-g.append("line").attr("x1",0).attr("x2",0).attr("y1",-r).attr("y2", r).attr("stroke","black");
+  // 十字（点線）
+  g.append("line").attr("x1",-R).attr("x2", R).attr("y1",0).attr("y2",0)
+    .attr("stroke","#222").attr("stroke-dasharray","5,6");
+  g.append("line").attr("x1",0).attr("x2",0).attr("y1",-R).attr("y2",R)
+    .attr("stroke","#222").attr("stroke-dasharray","5,6");
 
-// ==== 便利関数（角度は度数）====
-const polar = (rho, thetaDeg) => {
-  const t = thetaDeg * Math.PI/180;
-  return [rho * Math.cos(t), rho * Math.sin(t)];
-};
-const addLabel = (txt, rho, theta, opt={}) => {
-  const [x,y] = polar(rho, theta);
-  const anchor =
-    (theta > -90 && theta < 90) ? "start" :
-    (theta === 90 || theta === -90) ? "middle" : "end";
-  g.append("text")
-    .text(txt)
-    .attr("x", x + (opt.dx || 0))
-    .attr("y", y + (opt.dyAbs || 0))  // ← ここで絶対オフセット
-    .attr("text-anchor", opt.anchor || anchor)
-    .attr("dominant-baseline", opt.baseline || "middle");
-    // .attr("dy", opt.dy || "0");    // 相対移動はオフ
-};
+  // 便利関数
+  const polar = (rho, deg) => {
+    const t = deg*Math.PI/180;
+    return [rho*Math.cos(t), rho*Math.sin(t)];
+  };
+  const addTextLines = (x, y, lines, cls, anchor="start", baseline="middle") => {
+    const t = g.append("text")
+      .attr("class", cls)
+      .attr("x", x).attr("y", y)
+      .attr("text-anchor", anchor)
+      .attr("dominant-baseline", baseline);
+    lines.forEach((s,i)=>{
+      t.append("tspan")
+        .attr("x", x)
+        .attr("dy", i===0 ? "0" : "1.15em")
+        .text(s);
+    });
+    return t;
+  };
 
-// 中央ラベル
-addLabel("PD", 0, 0, {anchor:"middle"});
+  // 中央：PD / OD（２行）
+  addTextLines(0, 0, ["PD", "OD"], "ringLabel", "middle", "middle");
 
-// 右方向に並べる内側ラベル（角度0°、左詰め＝start）
-addLabel("OD",                r*0.30, 0, {anchor:"start", dyAbs:-18});
-addLabel("個人／教員",        r*0.55, 0, {anchor:"start", dyAbs:  0});
-addLabel("学部・学科／FD担当", r*0.80, 0, {anchor:"start", dyAbs: 18});
-addLabel("全学／FD担当・経営層", r*1.05, 0, {anchor:"start", dyAbs: 36});
+  // 右上（各リングの小見出し＋本体ラベル）
+  // 画像に合わせ、水平より少し上（-10°）の位置に寄せます
+  const theta = -10; // 右方向より少し上
+  // 最外周
+  let [x4,y4] = polar(R*0.98, theta);
+  addTextLines(x4, y4-20, ["マクロ"], "caption", "start", "baseline");
+  addTextLines(x4, y4, ["全学", "FD担当者・管理職"], "ringLabel", "start");
+  // 3番目
+  let [x3,y3] = polar(R*0.74, theta);
+  addTextLines(x3, y3-20, ["ミドル"], "caption", "start", "baseline");
+  addTextLines(x3, y3, ["学部・学科", "FD担当者・管理職"], "ringLabel", "start");
+  // 2番目
+  let [x2,y2] = polar(R*0.50, theta);
+  addTextLines(x2, y2-20, ["ミクロ"], "caption", "start", "baseline");
+  addTextLines(x2, y2, ["個人", "教員"], "ringLabel", "start");
+  // 最内周（中央の少し上に OD/PD の説明を小さめで）
+  let [x1,y1] = polar(R*0.30, theta);
+  addTextLines(x1, y1, ["OD（組織の改善）", "＋", "PD（個人の成長）"], "centerSmall", "start");
 
-// 象限ラベル（45°ずらすと円と干渉しにくい）
-addLabel("研究",         r*0.93, -135);
-addLabel("教育",         r*0.93,  -45);
-addLabel("リーダーシップ", r*0.93, 135);
-addLabel("社会関与",     r*0.93,  45);
+  // 外側の象限ラベル（45°ずらし）
+  const q = 0.93*R;
+  const quads = [
+    {txt:"研究", deg:135, anchor:"end"},
+    {txt:"教育", deg:45,  anchor:"start"},
+    {txt:"リーダーシップ", deg:-135, anchor:"end"},
+    {txt:"社会関与", deg:-45, anchor:"start"},
+  ];
+  quads.forEach(d=>{
+    const [qx,qy]=polar(q, d.deg);
+    addTextLines(qx, qy, [d.txt], "quadLabel", d.anchor);
+  });
+
+  // 見た目の微調整：フォントロード後の再配置（必要に応じて）
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(()=>{ /* さらに詰めたければここで getBBox 調整 */ });
+  }
+})();
 </script>
