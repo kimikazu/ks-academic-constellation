@@ -70,8 +70,8 @@ addLabel("学部・学科／FD担当", r*0.80, 0, {anchor:"start", dyAbs: 18});
 addLabel("全学／FD担当・経営層", r*1.05, 0, {anchor:"start", dyAbs: 36});
 
 // 象限ラベル（45°ずらすと円と干渉しにくい）
-addLabel("研究",         r*0.93, 135);
-addLabel("教育",         r*0.93,  45);
-addLabel("リーダーシップ", r*0.93, -135);
-addLabel("社会関与",     r*0.93,  -45);
+addLabel("研究",         r*0.93, -135);
+addLabel("教育",         r*0.93,  -45);
+addLabel("リーダーシップ", r*0.93, 135);
+addLabel("社会関与",     r*0.93,  45);
 </script>
