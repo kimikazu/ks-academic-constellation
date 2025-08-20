@@ -94,10 +94,10 @@ layout: default
   // 外側の象限ラベル（45°ずらし）
   const q = 0.93*R;
   const quads = [
-    {txt:"研究", deg:135, anchor:"end"},
-    {txt:"教育", deg:45,  anchor:"start"},
-    {txt:"リーダーシップ", deg:-135, anchor:"end"},
-    {txt:"社会関与", deg:-45, anchor:"start"},
+    {txt:"研究", deg:-135, anchor:"end"},
+    {txt:"教育", deg:-45,  anchor:"start"},
+    {txt:"リーダーシップ", deg:135, anchor:"end"},
+    {txt:"社会関与", deg:45, anchor:"start"},
   ];
   quads.forEach(d=>{
     const [qx,qy]=polar(q, d.deg);
