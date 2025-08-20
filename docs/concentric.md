@@ -48,17 +48,16 @@ const polar = (rho, thetaDeg) => {
 };
 const addLabel = (txt, rho, theta, opt={}) => {
   const [x,y] = polar(rho, theta);
-  // 象限で text-anchor を自動切替
   const anchor =
     (theta > -90 && theta < 90) ? "start" :
     (theta === 90 || theta === -90) ? "middle" : "end";
   g.append("text")
     .text(txt)
     .attr("x", x + (opt.dx || 0))
-    .attr("y", y + (opt.dy || 0))
+    .attr("y", y + (opt.dyAbs || 0))  // ← ここで絶対オフセット
     .attr("text-anchor", opt.anchor || anchor)
-    .attr("dominant-baseline", opt.baseline || "middle") // ←重要
-    .attr("dy", (opt.dy ?? opt.em) || "0.35em");   // ←微調整
+    .attr("dominant-baseline", opt.baseline || "middle");
+    // .attr("dy", opt.dy || "0");    // 相対移動はオフ
 };
 
 // 中央ラベル
