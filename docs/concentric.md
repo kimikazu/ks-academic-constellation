@@ -20,12 +20,17 @@ layout: default
 
 <!-- ページ内に直接書く例（Jekyllでそのまま通る） -->
 <script>
-const box = document.getElementById("chart");
-const w = box.clientWidth, h = box.clientHeight, r = Math.min(w,h)/2 - 20;
+const M = {top:32,right:180,bottom:40,left:180};
+const W = 640, H = 640;
+const innerW = W - M.left - M.right;
+const innerH = H - M.top - M.bottom;
+const r = Math.min(innerW, innerH)/2;
 
 const svg = d3.select("#chart").append("svg")
-  .attr("width", w).attr("height", h);
-const g = svg.append("g").attr("transform", `translate(${w/2},${h/2})`);
+  .attr("viewBox", `0 0 ${W} ${H}`);
+
+const g = svg.append("g")
+  .attr("transform", `translate(${M.left + innerW/2},${M.top + innerH/2})`);
 
 // 同心円
 [0.25,0.5,0.75,1.0].forEach(f =>
