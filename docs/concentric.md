@@ -53,17 +53,17 @@ const addLabel = (txt, rho, theta, opt={}) => {
     .attr("y", y + (opt.dy || 0))
     .attr("text-anchor", opt.anchor || anchor)
     .attr("dominant-baseline", opt.baseline || "middle") // ←重要
-    .attr("dy", opt.em || "0.35em");                     // ←微調整
+    .attr("dy", (opt.dy ?? opt.em) || "0.35em");   // ←微調整
 };
 
 // 中央ラベル
 addLabel("PD", 0, 0, {anchor:"middle"});
 
 // 右方向に並べる内側ラベル（角度0°、左詰め＝start）
-addLabel("OD",                r*0.30, 0, {anchor:"start", dy:"-1.2em"});
-addLabel("個人／教員",        r*0.55, 0, {anchor:"start", dy:"0em"});
-addLabel("学部・学科／FD担当", r*0.80, 0, {anchor:"start", dy:"1.2em"});
-addLabel("全学／FD担当・経営層", r*1.05, 0, {anchor:"start", dy:"2.4em"});
+addLabel("OD",                r*0.30, 0, {anchor:"start", dyAbs:-18});
+addLabel("個人／教員",        r*0.55, 0, {anchor:"start", dyAbs:  0});
+addLabel("学部・学科／FD担当", r*0.80, 0, {anchor:"start", dyAbs: 18});
+addLabel("全学／FD担当・経営層", r*1.05, 0, {anchor:"start", dyAbs: 36});
 
 // 象限ラベル（45°ずらすと円と干渉しにくい）
 addLabel("研究",         r*0.93, 135);
