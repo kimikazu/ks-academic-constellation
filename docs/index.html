@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>DOIリンク集</title>
+<style>
+  :root{--gap:14px}
+  body{font-family:system-ui,"Noto Sans JP",sans-serif;margin:24px}
+  header{display:flex;flex-wrap:wrap;gap:var(--gap);align-items:center;margin-bottom:var(--gap)}
+  input,select,button{padding:.6rem .7rem;font-size:16px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:var(--gap)}
+  .card{border:1px solid #e5e7eb;border-radius:14px;padding:16px}
+  .muted{color:#6b7280;font-size:0.9em}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .tag{background:#eef2ff;border:1px solid #e0e7ff;border-radius:999px;padding:.1rem .6rem;font-size:.85em}
+  a{color:#1f6feb;text-decoration:none}
+  a:hover{text-decoration:underline}
+  .pill{border:1px solid #e5e7eb;border-radius:999px;padding:.3rem .6rem}
+  .right{margin-left:auto}
+</style>
+</head>
+<body>
+<header>
+  <input id="q" placeholder="タイトル / 著者 / 雑誌 / DOI / タグで検索" oninput="render()" />
+  <select id="sort" onchange="render()">
+    <option value="year-desc">新しい順</option>
+    <option value="year-asc">古い順</option>
+    <option value="title-asc">タイトルA→Z</option>
+    <option value="title-desc">タイトルZ→A</option>
+  </select>
+  <span id="count" class="pill"></span>
+  <span class="right muted">更新は <code>dois.csv</code> を編集してコミット</span>
+</header>
+
+<div id="list" class="grid"></div>
+
+<script>
+/** ▼ 設定：CSVソース（GitHub内の dois.csv か、公開Google SheetsのCSV） */
+const DATA_SRC = 'dois.csv'; 
+// 例) Google Sheets 公開CSVにする場合：
+// const DATA_SRC = 'https://docs.google.com/spreadsheets/d/XXXX/export?format=csv&gid=0';
+
+/** ▼ Crossref からメタデータ取得（簡易キャッシュ付） */
+async function fetchCrossref(doi){
+  const key = 'cr_' + doi;
+  const cached = localStorage.getItem(key);
+  if (cached) { try { return JSON.parse(cached); } catch(e){} }
+  const url = 'https://api.crossref.org/works/' + encodeURIComponent(doi);
+  const res = await fetch(url, {headers: {'Accept': 'application/json'}});
+  if (!res.ok) throw new Error('Crossref error ' + res.status);
+  const json = await res.json();
+  localStorage.setItem(key, JSON.stringify(json));
+  return json;
+}
+
+/** ▼ CSV 読み込み（超簡易・カンマ区切り） */
+async function fetchCsv(url){
+  const res = await fetch(url, {cache:'no-store'});
+  if (!res.ok) throw new Error('CSV not found');
+  const text = await res.text();
+  const lines = text.trim().split(/\r?\n/);
+  const header = lines.shift().split(',').map(s=>s.trim());
+  return lines.map(line=>{
+    // ざっくりCSV: ダブルクォート対応は最小限
+    const cells = line.match(/(".*?"|[^,]+)/g).map(s=>s.replace(/^"(.*)"$/,'$1'));
+    const obj = {}; header.forEach((h,i)=>obj[h]=cells[i]??'');
+    return obj;
+  }).filter(r=>r.doi);
+}
+
+/** ▼ 文字列ユーティリティ */
+const norm = s => (s||'').toString().toLowerCase();
+
+/** ▼ グローバル状態 */
+let records = []; // {doi,tags,notes,meta}
+
+function toCite(obj) {
+  const m = obj?.message || {};
+  const title = (m.title && m.title[0]) || '';
+  const year = (m.created?.['date-parts']?.[0]?.[0]) || (m.issued?.['date-parts']?.[0]?.[0]) || '';
+  const auth = (m.author||[]).map(a=>[a.given,a.family].filter(Boolean).join(' ')).join(', ');
+  const journal = (m['container-title'] && m['container-title'][0]) || '';
+  return { title, year, authors: auth, journal };
+}
+
+function passFilter(item, q){
+  if (!q) return true;
+  return [item.meta.title, item.meta.authors, item.meta.journal, item.doi, item.tags, item.notes]
+    .some(v => norm(v).includes(q));
+}
+
+function sortBy(items, mode){
+  const byYear = (a,b)=> (b.meta.year||0)-(a.meta.year||0);
+  const byTitle = (a,b)=> (a.meta.title||'').localeCompare(b.meta.title||'');
+  if (mode==='year-asc') return items.sort((a,b)=>-byYear(a,b));
+  if (mode==='title-asc') return items.sort(byTitle);
+  if (mode==='title-desc') return items.sort((a,b)=>-byTitle(a,b));
+  return items.sort(byYear);
+}
+
+async function boot(){
+  const rows = await fetchCsv(DATA_SRC);
+  // DOIごとにCrossref取得
+  records = await Promise.all(rows.map(async r=>{
+    try{
+      const cr = await fetchCrossref(r.doi);
+      const cite = toCite(cr);
+      return { doi:r.doi, tags:r.tags||'', notes:r.notes||'', meta:cite };
+    }catch(e){
+      return { doi:r.doi, tags:r.tags||'', notes:r.notes||'', meta:{title:'(取得失敗)', authors:'', journal:'', year:''}};
+    }
+  }));
+  render();
+}
+
+function render(){
+  const q = norm(document.getElementById('q').value);
+  const mode = document.getElementById('sort').value;
+  const target = document.getElementById('list');
+  const arr = sortBy(records.filter(r=>passFilter(r,q)), mode);
+
+  target.innerHTML = arr.map(r=>{
+    const doiUrl = 'https://doi.org/' + encodeURIComponent(r.doi);
+    const bibUrl = 'https://api.crossref.org/works/' + encodeURIComponent(r.doi) + '/transform/application/x-bibtex';
+    const gscholar = 'https://scholar.google.com/scholar?q=' + encodeURIComponent(`${r.meta.title} ${r.meta.authors}`);
+    const year = r.meta.year ? ` (${r.meta.year})` : '';
+    const tags = (r.tags||'').split(';').map(s=>s.trim()).filter(Boolean).map(t=>`<span class="tag">${t}</span>`).join(' ');
+    const notes = r.notes ? `<div class="muted">📝 ${r.notes}</div>`:'';
+    const journal = r.meta.journal ? `<span class="muted"> — ${r.meta.journal}</span>` : '';
+    return `
+      <div class="card">
+        <div><a href="${doiUrl}" target="_blank" rel="noopener"><strong>${escapeHtml(r.meta.title||r.doi)}</strong></a>${year}${journal}</div>
+        <div class="muted">${escapeHtml(r.meta.authors||'')}</div>
+        <div class="row" style="margin:.4rem 0">${tags}</div>
+        ${notes}
+        <div class="row" style="margin-top:.6rem">
+          <a class="pill" href="${bibUrl}" target="_blank" rel="noopener">BibTeX</a>
+          <a class="pill" href="${gscholar}" target="_blank" rel="noopener">Google Scholar で検索</a>
+          <code class="pill">${r.doi}</code>
+        </div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('count').textContent = `${arr.length} 件`;
+}
+
+function escapeHtml(s){return (s||'').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+
+boot().catch(err=>{
+  document.getElementById('list').innerHTML = `<div class="muted">読込エラー: ${escapeHtml(String(err))}</div>`;
+});
+</script>
+</body>
+</html>
