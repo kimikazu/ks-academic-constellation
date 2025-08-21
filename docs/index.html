@@ -33,7 +33,7 @@
     <option value="title-desc">タイトルZ→A</option>
   </select>
   <span id="count" class="pill"></span>
-  <span class="right muted">更新は <code>dois.csv</code> を編集してコミット</span>
+  <span class="right muted">更新は <code>dois.csv</code> を編集してコミット（任意: <code>bibtex</code> 列）</span>
 </header>
 
 <div id="list" class="grid">
@@ -58,58 +58,55 @@ async function fetchCsv(url){
   const idx = Object.fromEntries(header.map((h,i)=>[h,i]));
   return lines.filter(Boolean).map(line=>{
     const cells = splitCsvLine(line);
-    return { doi:(cells[idx['doi']]??'').trim(), tags:(cells[idx['tags']]??'').trim(), notes:(cells[idx['notes']]??'').trim() };
+    return {
+      doi:(cells[idx['doi']]??'').trim(),
+      tags:(cells[idx['tags']]??'').trim(),
+      notes:(cells[idx['notes']]??'').trim(),
+      bibtex:(cells[idx['bibtex']]??'').trim() // 任意
+    };
   }).filter(r=>r.doi);
 }
 
-/** ▼ 既存メタ取得（Crossref→doi.org CSL→citeproc→DataCite→OpenAlex） */
+/** ▼ 既存メタ（Crossref → doi.org/CSL → citeproc → DataCite → OpenAlex → J-STAGE） */
 async function fetchMeta(doi){
   const key = 'meta_' + doi;
   const cached = localStorage.getItem(key);
   if (cached) { try { return JSON.parse(cached); } catch {} }
 
-  // Crossref
   try{ const r=await fetch('https://api.crossref.org/works/'+encodeURIComponent(doi),{headers:{'Accept':'application/json'}}); if(r.ok){ const json=await r.json(); const out={source:'crossref',raw:json}; localStorage.setItem(key,JSON.stringify(out)); return out; } }catch{}
-  // doi.org CSL
   try{ const r=await fetch('https://doi.org/'+encodeURIComponent(doi),{headers:{'Accept':'application/vnd.citationstyles.csl+json'}}); if(r.ok){ const json=await r.json(); const out={source:'doi.org-csl',raw:json}; localStorage.setItem(key,JSON.stringify(out)); return out; } }catch{}
-  // doi.org citeproc+json
   try{ const r=await fetch('https://doi.org/'+encodeURIComponent(doi),{headers:{'Accept':'application/citeproc+json'}}); if(r.ok){ const json=await r.json(); const out={source:'doi.org-citeproc',raw:json}; localStorage.setItem(key,JSON.stringify(out)); return out; } }catch{}
-  // DataCite
   try{ const r=await fetch('https://api.datacite.org/dois/'+encodeURIComponent(doi),{headers:{'Accept':'application/json'}}); if(r.ok){ const json=await r.json(); const out={source:'datacite',raw:json}; localStorage.setItem(key,JSON.stringify(out)); return out; } }catch{}
-  // OpenAlex
   try{ const r=await fetch('https://api.openalex.org/works/https://doi.org/'+encodeURIComponent(doi),{headers:{'Accept':'application/json'}}); if(r.ok){ const json=await r.json(); const out={source:'openalex',raw:json}; localStorage.setItem(key,JSON.stringify(out)); return out; } }catch{}
-
-  // ★ J-STAGE WebAPI フォールバック（JaLC/J-STAGE DOI を推定）
   try{
-    const j = await fetchJstageByDoi(doi); // {raw, source:'jstage-webapi'}
+    const j = await fetchJstageByDoi(doi);
     if (j) { localStorage.setItem(key, JSON.stringify(j)); return j; }
   }catch{}
 
   const out={source:'none',raw:null}; localStorage.setItem(key,JSON.stringify(out)); return out;
 }
 
-/** ▼ J-STAGE DOI なら WebAPI で取得（XML→オブジェクト） */
+/** ▼ J-STAGE DOI を推定して WebAPI から取得（XML→オブジェクト） */
 function parseJstageDoi(doi){
-  // 例: 10.57294/jaed.3.0_11  -> {prefix:10.57294, cdjournal:jaed, vol:3, no:0, start:11}
+  // 例: 10.57294/jaed.3.0_11  -> {cdjournal:'jaed', vol:'3', no:'0', start:'11'}
   const m = /^10\.57294\/([^.]+)\.(\d+)\.(\d+)_([\dA-Za-z]+)$/.exec(doi);
   if (!m) return null;
-  return { cdjournal:m[1], vol: m[2], no: m[3], start: m[4] };
+  return { cdjournal:m[1], vol:m[2], no:m[3], start:m[4] };
 }
 async function fetchJstageByDoi(doi){
   const p = parseJstageDoi(doi);
   if (!p) return null;
   const url = new URL('https://api.jstage.jst.go.jp/searchapi/do');
-  url.searchParams.set('service','3'); // 論文検索結果取得
+  url.searchParams.set('service','3');
   url.searchParams.set('cdjournal', p.cdjournal);
   url.searchParams.set('vol', p.vol);
   url.searchParams.set('no', p.no);
-  url.searchParams.set('count','200'); // 号内最大件数想定
+  url.searchParams.set('count','200');
   const res = await fetch(url.href, { cache:'no-store' });
   if (!res.ok) return null;
   const xmlText = await res.text();
   const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
   const entries = [...doc.getElementsByTagName('entry')];
-  // DOI一致 or 開始ページ一致で特定
   const hit = entries.find(e=>{
     const doiNode = e.getElementsByTagName('prism:doi')[0];
     const spNode  = e.getElementsByTagName('prism:startingPage')[0];
@@ -118,28 +115,22 @@ async function fetchJstageByDoi(doi){
     return (doiVal && doiVal.toLowerCase()===doi.toLowerCase()) || (spVal && spVal===p.start);
   });
   if (!hit) return null;
-  // タイトル（ja優先→en）
   const tJa = hit.querySelector('article_title > ja')?.textContent?.trim();
   const tEn = hit.querySelector('article_title > en')?.textContent?.trim();
   const title = tJa || tEn || '';
-  // 著者名（ja / en）
   const aJa = [...hit.querySelectorAll('author > ja')].map(n=>n.textContent.trim()).filter(Boolean);
   const aEn = [...hit.querySelectorAll('author > en')].map(n=>n.textContent.trim()).filter(Boolean);
   const authors = (aJa.length ? aJa : aEn).join(', ');
-  // 誌名
   const mj = hit.querySelector('material_title > ja')?.textContent?.trim()
            || hit.querySelector('material_title > en')?.textContent?.trim() || '';
   const year = hit.getElementsByTagName('pubyear')[0]?.textContent?.slice(0,4) || '';
-  const out = { source:'jstage-webapi', raw:{
-    title, authors, journal:mj, year
-  }};
-  return out;
+  return { source:'jstage-webapi', raw:{ title, authors, journal:mj, year } };
 }
 
-/** ▼ ソース別に統一整形 */
+/** ▼ 統一整形 */
 function toCite(meta){
   const { source, raw } = meta || {};
-  if (!raw) return { title: '(取得失敗)', year: '', authors: '', journal: '' };
+  if (!raw) return { title: '', year: '', authors: '', journal: '' };
 
   if (source==='crossref'){
     const m = raw.message||{};
@@ -153,9 +144,15 @@ function toCite(meta){
   if (source==='doi.org-csl' || source==='doi.org-citeproc'){
     const m = raw||{};
     const year=(m.issued?.['date-parts']?.[0]?.[0])||'';
-    const authors=(m.author||[]).map(a=>a.family||a.given?[a.given,a.family].filter(Boolean).join(' '):(a.name||'')).join(', ');
-    return { title:Array.isArray(m.title)?m.title[0]:(m.title||''), year,
-      authors, journal:Array.isArray(m['container-title'])?m['container-title'][0]:(m['container-title']||m['container-title-short']||'') };
+    const authors=(m.author||[]).map(a=>{
+      if (a.family || a.given) return [a.given,a.family].filter(Boolean).join(' ');
+      return a.name || '';
+    }).join(', ');
+    return {
+      title:Array.isArray(m.title)?m.title[0]:(m.title||''),
+      year, authors,
+      journal:Array.isArray(m['container-title'])?m['container-title'][0]:(m['container-title']||m['container-title-short']||'')
+    };
   }
   if (source==='datacite'){
     const a = raw.data?.attributes||{};
@@ -174,7 +171,109 @@ function toCite(meta){
   if (source==='jstage-webapi'){
     return { title: raw.title||'', year: raw.year||'', authors: raw.authors||'', journal: raw.journal||'' };
   }
-  return { title:'(取得失敗)', year:'', authors:'', journal:'' };
+  return { title:'', year:'', authors:'', journal:'' };
+}
+
+/** ▼ BibTeX 候補URL（override / J-STAGE / Crossref / CrossCite / doi.org） */
+function buildJstageBibtexUrl(doi){
+  const p = parseJstageDoi(doi);
+  if (!p) return '';
+  // 例: https://www.jstage.jst.go.jp/AF06S010ShoshJkuDld?sryCd=jaed&noVol=3&noIssue=0&kijiCd=3_11&kijiLangKrke=ja&kijiToolIdHkwtsh=AT0073&request_locale=JA
+  const u = new URL('https://www.jstage.jst.go.jp/AF06S010ShoshJkuDld');
+  u.searchParams.set('sryCd', p.cdjournal);
+  u.searchParams.set('noVol', p.vol);
+  u.searchParams.set('noIssue', p.no);
+  u.searchParams.set('kijiCd', `${p.vol}_${p.start}`);
+  u.searchParams.set('kijiLangKrke', 'ja');
+  u.searchParams.set('kijiToolIdHkwtsh', 'AT0073');
+  u.searchParams.set('request_locale', 'JA');
+  return u.href;
+}
+async function fetchBibtex(doi, overrideUrl){
+  const list = [];
+  if (overrideUrl) list.push(overrideUrl);
+  const jsUrl = buildJstageBibtexUrl(doi); if (jsUrl) list.push(jsUrl);
+  list.push(
+    'https://api.crossref.org/works/' + encodeURIComponent(doi) + '/transform/application/x-bibtex',
+    'https://citation.crosscite.org/format?doi=' + encodeURIComponent(doi) + '&style=bibtex',
+    'https://doi.org/' + encodeURIComponent(doi)
+  );
+  for (const u of list){
+    try{
+      const headers = u.includes('doi.org') ? { 'Accept':'application/x-bibtex' } : { 'Accept':'text/plain' };
+      const res = await fetch(u, { headers, cache:'no-store' });
+      if (res.ok){ return await res.text(); }
+    }catch{}
+  }
+  return '';
+}
+
+/** ▼ BibTeX パーサ（波括弧ネスト・改行対応） */
+function parseBibtexToMeta(text){
+  if (!text) return { title:'', authors:'', year:'', journal:'' };
+
+  const readField = (name)=>{
+    const re = new RegExp('\\b' + name + '\\s*=', 'i');
+    const m = re.exec(text);
+    if (!m) return '';
+    let i = m.index + m[0].length;
+    // skip spaces
+    while (i < text.length && /\s|=/.test(text[i])) i++;
+    let val = '';
+    if (text[i] === '{' || text[i] === '"'){
+      const quote = text[i]; i++;
+      let depth = (quote === '{') ? 1 : 0;
+      const start = i;
+      while (i < text.length){
+        const ch = text[i];
+        if (quote === '"'){
+          if (ch === '"') break;
+        }else{
+          if (ch === '{') depth++;
+          else if (ch === '}'){ depth--; if (depth === 0) break; }
+        }
+        i++;
+      }
+      val = text.slice(start, i);
+    }else{
+      const start = i; let depth = 0;
+      while (i < text.length){
+        const ch = text[i];
+        if (ch === '{') depth++;
+        else if (ch === '}') depth = Math.max(0, depth-1);
+        else if (ch === ',' && depth === 0) break;
+        i++;
+      }
+      val = text.slice(start, i);
+    }
+    val = val.replace(/\s+/g,' ').trim();
+    // 外側の重ね波括弧を可能な限り剥がす
+    while (val.startsWith('{') && val.endsWith('}')) {
+      const inner = val.slice(1, -1).trim();
+      // 片側だけ減るケースを避けるため、内側の波括弧バランスをチェック
+      let d=0, ok=true; for (const c of inner){ if(c==='{') d++; else if(c==='}') d--; if(d<0){ok=false;break;} }
+      if (!ok || d!==0) break;
+      val = inner;
+    }
+    return val;
+  };
+
+  const splitAuthors = (s)=>{
+    if (!s) return '';
+    return s.split(/\s+and\s+/i).map(t=>{
+      t=t.trim();
+      if (t.includes(',')){ const [last, first] = t.split(',').map(x=>x.trim()); return [first,last].filter(Boolean).join(' '); }
+      return t;
+    }).join(', ');
+  };
+
+  const title = readField('title');
+  const authors = splitAuthors(readField('author'));
+  let year = readField('year') || readField('date');
+  const mYear = year.match(/\b(19|20)\d{2}\b/); year = mYear ? mYear[0] : '';
+  const journal = readField('journal') || readField('booktitle');
+
+  return { title, authors, year, journal };
 }
 
 /** ▼ フィルタ＆ソート／状態 */
@@ -191,6 +290,34 @@ function sortBy(items, mode){
 }
 let records=[];
 
+/** ▼ 最終メタ（API → だめなら BibTeX で補完） */
+async function getFinalMeta(row){
+  const { doi, bibtex:override } = row;
+  const cacheKey = 'final_' + doi;
+  const cached = localStorage.getItem(cacheKey);
+  if (cached){ try { return JSON.parse(cached); } catch {} }
+
+  const metaRaw = await fetchMeta(doi);
+  let cite = toCite(metaRaw);
+  let source = metaRaw.source;
+
+  if (!cite.title){ // タイトルが無い場合は BibTeX から復元
+    const bib = await fetchBibtex(doi, override);
+    const bibCite = parseBibtexToMeta(bib);
+    cite = {
+      title:  cite.title  || bibCite.title,
+      authors:cite.authors|| bibCite.authors,
+      year:   cite.year   || bibCite.year,
+      journal:cite.journal|| bibCite.journal
+    };
+    if (bibCite.title) source = (source ? source + '+' : '') + (override ? 'bibtex-override' : (buildJstageBibtexUrl(doi) ? 'bibtex-jstage' : 'bibtex'));
+  }
+
+  const out = { source, meta:cite };
+  localStorage.setItem(cacheKey, JSON.stringify(out));
+  return out;
+}
+
 /** ▼ 起動 */
 async function boot(){
   try{
@@ -198,9 +325,8 @@ async function boot(){
     const slot=6, out=[];
     for (let i=0;i<rows.length;i+=slot){
       const batch = rows.slice(i,i+slot).map(async r=>{
-        const meta = await fetchMeta(r.doi);
-        const cite = toCite(meta);
-        return { doi:r.doi, tags:r.tags||'', notes:r.notes||'', meta:cite, source:meta.source };
+        const fin = await getFinalMeta(r);
+        return { doi:r.doi, tags:r.tags||'', notes:r.notes||'', meta:fin.meta, source:fin.source, bibtex:r.bibtex||'' };
       });
       out.push(...await Promise.all(batch));
     }
@@ -228,11 +354,8 @@ function render(){
     const title=escapeHtml(r.meta.title || r.doi);
     const authors=escapeHtml(r.meta.authors || '');
     const doiEnc=encodeURIComponent(r.doi);
-    const warn=r.meta.title?'':`<span class="pill warn" title="フォールバックでも見つかりませんでした">未取得</span>`;
-    const sourceBadge = r.source ? `<span class="pill muted" title="メタデータ取得元">${r.source}</span>` : '';
-
-    // J-STAGE記事ページ（推定）: ユーザ操作でBibTeX取得できるように
-    const jstageLink = jstageArticleUrl(r.doi);
+    const warn=r.meta.title?'':`<span class="pill warn" title="メタAPI・BibTeX双方でタイトルが見つかりませんでした">未取得</span>`;
+    const sourceBadge = r.source ? `<span class="pill muted" title="取得元">${r.source}</span>` : '';
 
     return `
       <div class="card">
@@ -241,8 +364,7 @@ function render(){
         <div class="row" style="margin:.4rem 0">${tags}</div>
         ${notes}
         <div class="row" style="margin-top:.6rem;align-items:center;gap:8px">
-          <button class="pill btn" onclick="downloadBibtexUTF8('${doiEnc}')">BibTeX（UTF-8保存）</button>
-          ${jstageLink?`<a class="pill" href="${jstageLink}" target="_blank" rel="noopener">J-STAGEでBibTeX</a>`:''}
+          <button class="pill btn" onclick="downloadBibtexUTF8('${doiEnc}', '${encodeURIComponent(r.bibtex||'')}')">BibTeX（UTF-8保存）</button>
           ${sourceBadge}
           <code class="pill">${escapeHtml(r.doi)}</code>
         </div>
@@ -252,32 +374,12 @@ function render(){
   document.getElementById('count').textContent = `${arr.length} 件`;
 }
 
-/** ▼ J-STAGE 記事ページの推定URL（ja） */
-function jstageArticleUrl(doi){
-  const p = parseJstageDoi(doi);
-  if (!p) return '';
-  // 例: https://www.jstage.jst.go.jp/article/jaed/3/0/3_11/_article/-char/ja/
-  return `https://www.jstage.jst.go.jp/article/${encodeURIComponent(p.cdjournal)}/${encodeURIComponent(p.vol)}/${encodeURIComponent(p.no)}/${encodeURIComponent(p.vol+'_'+p.start)}/_article/-char/ja/`;
-}
-
-/** ▼ BibTeX取得（Crossref → CrossCite → doi.org）+ UTF-8+BOMで保存
-    ※ J-STAGE DOI はここで失敗する場合があるため、上の “J-STAGEでBibTeX” を併用 */
-async function downloadBibtexUTF8(doiEnc){
+/** ▼ BibTeX（override / J-STAGE / Crossref / CrossCite / doi.org）+ UTF-8+BOM保存 */
+async function downloadBibtexUTF8(doiEnc, overrideEnc){
   const doi = decodeURIComponent(doiEnc);
-  const tryUrls = [
-    'https://api.crossref.org/works/' + encodeURIComponent(doi) + '/transform/application/x-bibtex',
-    'https://citation.crosscite.org/format?doi=' + encodeURIComponent(doi) + '&style=bibtex',
-    'https://doi.org/' + encodeURIComponent(doi)
-  ];
-  let text=null;
-  for (const u of tryUrls){
-    try{
-      const headers = u.includes('doi.org') ? { 'Accept':'application/x-bibtex' } : { 'Accept':'text/plain' };
-      const res = await fetch(u, { headers, cache:'no-store' });
-      if (res.ok){ text = await res.text(); break; }
-    }catch{}
-  }
-  if (!text){ alert('BibTeXの取得に失敗しました。J-STAGEボタンから取得してください。'); return; }
+  const overrideUrl = overrideEnc ? decodeURIComponent(overrideEnc) : '';
+  const text = await fetchBibtex(doi, overrideUrl);
+  if (!text){ alert('BibTeXの取得に失敗しました'); return; }
   const blob = new Blob(["\uFEFF"+text], { type:'text/plain;charset=utf-8' });
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=(doi.replace(/[^\w.-]+/g,'_'))+'.bib'; document.body.appendChild(a); a.click(); a.remove();
 }
