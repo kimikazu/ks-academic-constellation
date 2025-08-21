@@ -39,9 +39,6 @@
   <div class="muted">読み込み中…</div>
 </div>
 
-<!-- ローカルでBibTeX生成するためのライブラリ（Crossref→BibTeX変換） -->
-<script src="https://cdn.jsdelivr.net/npm/citation-js@0.6.8/build/citation.min.js"></script>
-
 <script>
 /** ▼ 設定：CSVソース
  * GitHub Pages内の dois.csv を使う場合は既定のまま。
@@ -96,7 +93,7 @@ const escapeHtml = s => (s||'').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;'
 function toCite(obj) {
   const m = obj?.message || {};
   const title = (m.title && m.title[0]) || '';
-  const year = (m.created?.['date-parts']?.[0]?.[0]) || (m.issued?.['date-parts']?.[0]?.[0]) || '';
+  �const year = (m.created?.['date-parts']?.[0]?.[0]) || (m.issued?.['date-parts']?.[0]?.[0]) || '';
   const auth = (m.author||[]).map(a=>[a.given,a.family].filter(Boolean).join(' ')).join(', ');
   const journal = (m['container-title'] && m['container-title'][0]) || '';
   return { title, year, authors: auth, journal };
@@ -149,13 +146,13 @@ function render(){
 
   target.innerHTML = arr.map(r=>{
     const doiUrl = 'https://doi.org/' + encodeURIComponent(r.doi);
-    const crossrefBib = 'https://api.crossref.org/works/' + encodeURIComponent(r.doi) + '/transform/application/x-bibtex';
     const year = r.meta.year ? ` (${r.meta.year})` : '';
     const tags = (r.tags||'').split(';').map(s=>s.trim()).filter(Boolean).map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join(' ');
     const notes = r.notes ? `<div class="muted">📝 ${escapeHtml(r.notes)}</div>`:'';
     const journal = r.meta.journal ? `<span class="muted"> — ${escapeHtml(r.meta.journal)}</span>` : '';
     const title = escapeHtml(r.meta.title || r.doi);
     const authors = escapeHtml(r.meta.authors || '');
+    const doiEnc = encodeURIComponent(r.doi);
 
     return `
       <div class="card">
@@ -164,9 +161,7 @@ function render(){
         <div class="row" style="margin:.4rem 0">${tags}</div>
         ${notes}
         <div class="row" style="margin-top:.6rem">
-          <button class="pill btn" onclick="downloadBibtexUTF8('${encodeURIComponent(r.doi)}')">BibTeX（UTF-8保存）</button>
-          <button class="pill btn" onclick="downloadBibtexLocal('${encodeURIComponent(r.doi)}')">BibTeX（ローカル生成）</button>
-          <a class="pill" href="${crossrefBib}" target="_blank" rel="noopener" title="Crossrefが返す生テキスト（ブラウザの文字コード判定で化ける場合あり）">Crossref BibTeX（原本）</a>
+          <button class="pill btn" onclick="downloadBibtexUTF8('${doiEnc}')">BibTeX（Crossref/UTF-8保存）</button>
           <code class="pill">${escapeHtml(r.doi)}</code>
         </div>
       </div>`;
@@ -175,14 +170,14 @@ function render(){
   document.getElementById('count').textContent = `${arr.length} 件`;
 }
 
-/** ▼ 文字化け対策A：CrossrefのBibTeXを取得し、UTF-8指定で保存 */
+/** ▼ 文字化け対策：Crossref原本を取得し、UTF-8明示で保存 */
 async function downloadBibtexUTF8(doiEnc){
   const doi = decodeURIComponent(doiEnc);
   const url = 'https://api.crossref.org/works/' + encodeURIComponent(doi) + '/transform/application/x-bibtex';
   const res = await fetch(url, { headers: { 'Accept': 'application/x-bibtex' }, cache:'no-store' });
   if(!res.ok) { alert('Crossref取得エラー: ' + res.status); return; }
   const text = await res.text();
-  // BOMを先頭に付与し、UTF-8を明示して保存（ブラウザの誤判定を回避）
+  // BOMを付与しUTF-8で保存（ブラウザの文字コード誤判定を回避）
   const blob = new Blob(["\ufeff" + text], { type: 'text/plain;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -190,24 +185,6 @@ async function downloadBibtexUTF8(doiEnc){
   document.body.appendChild(a);
   a.click();
   a.remove();
-}
-
-/** ▼ 文字化け対策B：クライアントでBibTeXを生成（citation-js使用） */
-async function downloadBibtexLocal(doiEnc){
-  const doi = decodeURIComponent(doiEnc);
-  try{
-    const cite = await Cite.async(doi);     // Crossrefから取得
-    const bibtex = cite.format('bibtex');   // クライアントでBibTeX生成
-    const blob = new Blob(["\ufeff" + bibtex], { type: 'text/plain;charset=utf-8' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = (doi.replace(/[^\w.-]+/g,'_')) + '.bib';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  }catch(e){
-    alert('ローカル生成でエラー: ' + e);
-  }
 }
 
 boot();
