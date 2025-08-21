@@ -16,8 +16,10 @@
   .tag{background:#eef2ff;border:1px solid #e0e7ff;border-radius:999px;padding:.1rem .6rem;font-size:.85em}
   a{color:#1f6feb;text-decoration:none}
   a:hover{text-decoration:underline}
-  .pill{border:1px solid #e5e7eb;border-radius:999px;padding:.3rem .6rem}
+  .pill{border:1px solid #e5e7eb;border-radius:999px;padding:.3rem .6rem;display:inline-block}
   .right{margin-left:auto}
+  .btn{cursor:pointer;background:#fff}
+  .btn:disabled{opacity:.6;cursor:not-allowed}
 </style>
 </head>
 <body>
@@ -33,15 +35,23 @@
   <span class="right muted">更新は <code>dois.csv</code> を編集してコミット</span>
 </header>
 
-<div id="list" class="grid"></div>
+<div id="list" class="grid">
+  <div class="muted">読み込み中…</div>
+</div>
+
+<!-- ローカルでBibTeX生成するためのライブラリ（Crossref→BibTeX変換） -->
+<script src="https://cdn.jsdelivr.net/npm/citation-js@0.6.8/build/citation.min.js"></script>
 
 <script>
-/** ▼ 設定：CSVソース（GitHub内の dois.csv か、公開Google SheetsのCSV） */
-const DATA_SRC = 'dois.csv'; 
-// 例) Google Sheets 公開CSVにする場合：
+/** ▼ 設定：CSVソース
+ * GitHub Pages内の dois.csv を使う場合は既定のまま。
+ * Google Sheetsを使う場合は「ウェブに公開（CSV）」URLに差し替えてください。
+ */
+const DATA_SRC = 'dois.csv';
+// 例) Google Sheets 公開CSV：
 // const DATA_SRC = 'https://docs.google.com/spreadsheets/d/XXXX/export?format=csv&gid=0';
 
-/** ▼ Crossref からメタデータ取得（簡易キャッシュ付） */
+/** ▼ Crossrefメタの簡易キャッシュ */
 async function fetchCrossref(doi){
   const key = 'cr_' + doi;
   const cached = localStorage.getItem(key);
@@ -54,27 +64,35 @@ async function fetchCrossref(doi){
   return json;
 }
 
-/** ▼ CSV 読み込み（超簡易・カンマ区切り） */
+/** ▼ CSV読み込み（シンプル実装） */
 async function fetchCsv(url){
   const res = await fetch(url, {cache:'no-store'});
   if (!res.ok) throw new Error('CSV not found');
   const text = await res.text();
   const lines = text.trim().split(/\r?\n/);
-  const header = lines.shift().split(',').map(s=>s.trim());
+  if (!lines.length) return [];
+  const header = splitCsvLine(lines.shift());
   return lines.map(line=>{
-    // ざっくりCSV: ダブルクォート対応は最小限
-    const cells = line.match(/(".*?"|[^,]+)/g).map(s=>s.replace(/^"(.*)"$/,'$1'));
-    const obj = {}; header.forEach((h,i)=>obj[h]=cells[i]??'');
+    const cells = splitCsvLine(line);
+    const obj = {};
+    header.forEach((h,i)=>obj[h]=cells[i]??'');
     return obj;
   }).filter(r=>r.doi);
 }
+function splitCsvLine(line){
+  // ダブルクォート込みの簡易CSV解析（カンマ・改行は最低限扱う）
+  const re = /("([^"]|"")*"|[^,]+)/g;
+  const out = [];
+  let m;
+  while ((m = re.exec(line)) !== null) out.push(m[0].replace(/^"(.*)"$/,'$1').replace(/""/g,'"'));
+  return out.map(s=>s.trim());
+}
 
-/** ▼ 文字列ユーティリティ */
+/** ▼ 文字列整形 */
 const norm = s => (s||'').toString().toLowerCase();
+const escapeHtml = s => (s||'').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
 
-/** ▼ グローバル状態 */
-let records = []; // {doi,tags,notes,meta}
-
+/** ▼ 表示用の変換 */
 function toCite(obj) {
   const m = obj?.message || {};
   const title = (m.title && m.title[0]) || '';
@@ -84,12 +102,12 @@ function toCite(obj) {
   return { title, year, authors: auth, journal };
 }
 
+/** ▼ フィルタ＆ソート */
 function passFilter(item, q){
   if (!q) return true;
   return [item.meta.title, item.meta.authors, item.meta.journal, item.doi, item.tags, item.notes]
     .some(v => norm(v).includes(q));
 }
-
 function sortBy(items, mode){
   const byYear = (a,b)=> (b.meta.year||0)-(a.meta.year||0);
   const byTitle = (a,b)=> (a.meta.title||'').localeCompare(b.meta.title||'');
@@ -99,21 +117,30 @@ function sortBy(items, mode){
   return items.sort(byYear);
 }
 
+/** ▼ グローバル状態 */
+let records = []; // {doi,tags,notes,meta}
+
+/** ▼ 起動処理 */
 async function boot(){
-  const rows = await fetchCsv(DATA_SRC);
-  // DOIごとにCrossref取得
-  records = await Promise.all(rows.map(async r=>{
-    try{
-      const cr = await fetchCrossref(r.doi);
-      const cite = toCite(cr);
-      return { doi:r.doi, tags:r.tags||'', notes:r.notes||'', meta:cite };
-    }catch(e){
-      return { doi:r.doi, tags:r.tags||'', notes:r.notes||'', meta:{title:'(取得失敗)', authors:'', journal:'', year:''}};
-    }
-  }));
-  render();
+  try{
+    const rows = await fetchCsv(DATA_SRC);
+    records = await Promise.all(rows.map(async r=>{
+      try{
+        const cr = await fetchCrossref(r.doi);
+        const cite = toCite(cr);
+        return { doi:r.doi, tags:r.tags||'', notes:r.notes||'', meta:cite };
+      }catch(e){
+        return { doi:r.doi, tags:r.tags||'', notes:r.notes||'', meta:{title:'(取得失敗)', authors:'', journal:'', year:''}};
+      }
+    }));
+    render();
+  }catch(err){
+    document.getElementById('list').innerHTML =
+      `<div class="muted">読込エラー: ${escapeHtml(String(err))}</div>`;
+  }
 }
 
+/** ▼ 描画 */
 function render(){
   const q = norm(document.getElementById('q').value);
   const mode = document.getElementById('sort').value;
@@ -122,22 +149,25 @@ function render(){
 
   target.innerHTML = arr.map(r=>{
     const doiUrl = 'https://doi.org/' + encodeURIComponent(r.doi);
-    const bibUrl = 'https://api.crossref.org/works/' + encodeURIComponent(r.doi) + '/transform/application/x-bibtex';
-    const gscholar = 'https://scholar.google.com/scholar?q=' + encodeURIComponent(`${r.meta.title} ${r.meta.authors}`);
+    const crossrefBib = 'https://api.crossref.org/works/' + encodeURIComponent(r.doi) + '/transform/application/x-bibtex';
     const year = r.meta.year ? ` (${r.meta.year})` : '';
-    const tags = (r.tags||'').split(';').map(s=>s.trim()).filter(Boolean).map(t=>`<span class="tag">${t}</span>`).join(' ');
-    const notes = r.notes ? `<div class="muted">📝 ${r.notes}</div>`:'';
-    const journal = r.meta.journal ? `<span class="muted"> — ${r.meta.journal}</span>` : '';
+    const tags = (r.tags||'').split(';').map(s=>s.trim()).filter(Boolean).map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join(' ');
+    const notes = r.notes ? `<div class="muted">📝 ${escapeHtml(r.notes)}</div>`:'';
+    const journal = r.meta.journal ? `<span class="muted"> — ${escapeHtml(r.meta.journal)}</span>` : '';
+    const title = escapeHtml(r.meta.title || r.doi);
+    const authors = escapeHtml(r.meta.authors || '');
+
     return `
       <div class="card">
-        <div><a href="${doiUrl}" target="_blank" rel="noopener"><strong>${escapeHtml(r.meta.title||r.doi)}</strong></a>${year}${journal}</div>
-        <div class="muted">${escapeHtml(r.meta.authors||'')}</div>
+        <div><a href="${doiUrl}" target="_blank" rel="noopener"><strong>${title}</strong></a>${year}${journal}</div>
+        <div class="muted">${authors}</div>
         <div class="row" style="margin:.4rem 0">${tags}</div>
         ${notes}
         <div class="row" style="margin-top:.6rem">
-          <a class="pill" href="${bibUrl}" target="_blank" rel="noopener">BibTeX</a>
-          <a class="pill" href="${gscholar}" target="_blank" rel="noopener">Google Scholar で検索</a>
-          <code class="pill">${r.doi}</code>
+          <button class="pill btn" onclick="downloadBibtexUTF8('${encodeURIComponent(r.doi)}')">BibTeX（UTF-8保存）</button>
+          <button class="pill btn" onclick="downloadBibtexLocal('${encodeURIComponent(r.doi)}')">BibTeX（ローカル生成）</button>
+          <a class="pill" href="${crossrefBib}" target="_blank" rel="noopener" title="Crossrefが返す生テキスト（ブラウザの文字コード判定で化ける場合あり）">Crossref BibTeX（原本）</a>
+          <code class="pill">${escapeHtml(r.doi)}</code>
         </div>
       </div>`;
   }).join('');
@@ -145,11 +175,42 @@ function render(){
   document.getElementById('count').textContent = `${arr.length} 件`;
 }
 
-function escapeHtml(s){return (s||'').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+/** ▼ 文字化け対策A：CrossrefのBibTeXを取得し、UTF-8指定で保存 */
+async function downloadBibtexUTF8(doiEnc){
+  const doi = decodeURIComponent(doiEnc);
+  const url = 'https://api.crossref.org/works/' + encodeURIComponent(doi) + '/transform/application/x-bibtex';
+  const res = await fetch(url, { headers: { 'Accept': 'application/x-bibtex' }, cache:'no-store' });
+  if(!res.ok) { alert('Crossref取得エラー: ' + res.status); return; }
+  const text = await res.text();
+  // BOMを先頭に付与し、UTF-8を明示して保存（ブラウザの誤判定を回避）
+  const blob = new Blob(["\ufeff" + text], { type: 'text/plain;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (doi.replace(/[^\w.-]+/g,'_')) + '.bib';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
 
-boot().catch(err=>{
-  document.getElementById('list').innerHTML = `<div class="muted">読込エラー: ${escapeHtml(String(err))}</div>`;
-});
+/** ▼ 文字化け対策B：クライアントでBibTeXを生成（citation-js使用） */
+async function downloadBibtexLocal(doiEnc){
+  const doi = decodeURIComponent(doiEnc);
+  try{
+    const cite = await Cite.async(doi);     // Crossrefから取得
+    const bibtex = cite.format('bibtex');   // クライアントでBibTeX生成
+    const blob = new Blob(["\ufeff" + bibtex], { type: 'text/plain;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = (doi.replace(/[^\w.-]+/g,'_')) + '.bib';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }catch(e){
+    alert('ローカル生成でエラー: ' + e);
+  }
+}
+
+boot();
 </script>
 </body>
 </html>
