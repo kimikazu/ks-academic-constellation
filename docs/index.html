@@ -41,24 +41,15 @@
 
 <script>
 /** ▼ CSVソース（同階層の dois.csv を想定）+ キャッシュバスター */
-const DATA_SRC = (()=>{
+const DATA_SRC = (() => {
   const u = new URL('dois.csv', location.href);
   u.searchParams.set('t', Date.now());   // GitHub Pages のキャッシュを回避
   return u.href;
 })();
 
-/** ▼ Crossrefメタの簡易キャッシュ */
-async function fetchCrossref(doi){
-  const key = 'cr_' + doi;
-  const cached = localStorage.getItem(key);
-  if (cached) { try { return JSON.parse(cached); } catch(e){} }
-  const url = 'https://api.crossref.org/works/' + encodeURIComponent(doi);
-  const res = await fetch(url, {headers: {'Accept': 'application/json'}});
-  if (!res.ok) throw new Error('Crossref error ' + res.status);
-  const json = await res.json();
-  localStorage.setItem(key, JSON.stringify(json));
-  return json;
-}
+/** ▼ 文字列ユーティリティ */
+const norm = s => (s||'').toString().toLowerCase();
+const escapeHtml = s => (s||'').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
 
 /** ▼ CSV読み込み（BOM除去・大小文字無視） */
 async function fetchCsv(url){
@@ -71,16 +62,15 @@ async function fetchCsv(url){
   const headerLower = rawHeader.map(h => h.toLowerCase());
   const idx = Object.fromEntries(headerLower.map((h,i)=>[h,i])); // 小文字→index
 
-  return lines.map(line=>{
+  return lines.filter(Boolean).map(line=>{
     const cells = splitCsvLine(line);
     return {
-      doi:   cells[idx['doi']]   ?? '',
-      tags:  cells[idx['tags']]  ?? '',
-      notes: cells[idx['notes']] ?? ''
+      doi:   (cells[idx['doi']]   ?? '').trim(),
+      tags:  (cells[idx['tags']]  ?? '').trim(),
+      notes: (cells[idx['notes']] ?? '').trim()
     };
   }).filter(r=>r.doi);
 }
-
 function splitCsvLine(line){
   // ダブルクォート対応の簡易CSV
   const re = /("([^"]|"")*"|[^,]+)/g;
@@ -90,18 +80,98 @@ function splitCsvLine(line){
   return out.map(s=>s.trim());
 }
 
-/** ▼ 文字列整形 */
-const norm = s => (s||'').toString().toLowerCase();
-const escapeHtml = s => (s||'').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+/** ▼ メタデータ取得（Crossref → doi.org/CSL → DataCite の順でフェイルオーバー）+ ローカルキャッシュ */
+async function fetchMeta(doi){
+  const key = 'meta_' + doi;
+  const cached = localStorage.getItem(key);
+  if (cached) { try { return JSON.parse(cached); } catch(e){} }
 
-/** ▼ 表示用の変換 */
-function toCite(obj) {
-  const m = obj?.message || {};
-  const title = (m.title && m.title[0]) || '';
-  const year  = (m.created?.['date-parts']?.[0]?.[0]) || (m.issued?.['date-parts']?.[0]?.[0]) || '';
-  const auth  = (m.author||[]).map(a=>[a.given,a.family].filter(Boolean).join(' ')).join(', ');
-  const journal = (m['container-title'] && m['container-title'][0]) || '';
-  return { title, year, authors: auth, journal };
+  // 1) Crossref
+  try {
+    const r = await fetch('https://api.crossref.org/works/' + encodeURIComponent(doi), {
+      headers: {'Accept': 'application/json'}
+    });
+    if (r.ok) {
+      const json = await r.json();
+      const out = { source: 'crossref', raw: json };
+      localStorage.setItem(key, JSON.stringify(out));
+      return out;
+    }
+  } catch {}
+
+  // 2) doi.org (CSL-JSON)
+  try {
+    const r = await fetch('https://doi.org/' + encodeURIComponent(doi), {
+      headers: {'Accept': 'application/vnd.citationstyles.csl+json'}
+    });
+    if (r.ok) {
+      const json = await r.json();
+      const out = { source: 'doi.org', raw: json };
+      localStorage.setItem(key, JSON.stringify(out));
+      return out;
+    }
+  } catch {}
+
+  // 3) DataCite
+  try {
+    const r = await fetch('https://api.datacite.org/dois/' + encodeURIComponent(doi), {
+      headers: {'Accept': 'application/json'}
+    });
+    if (r.ok) {
+      const json = await r.json();
+      const out = { source: 'datacite', raw: json };
+      localStorage.setItem(key, JSON.stringify(out));
+      return out;
+    }
+  } catch {}
+
+  const out = { source: 'none', raw: null };
+  localStorage.setItem(key, JSON.stringify(out));
+  return out;
+}
+
+/** ▼ 取得ソース別に統一フォーマットへ整形 */
+function toCite(meta){
+  const { source, raw } = meta || {};
+  if (!raw) return { title: '(取得失敗)', year: '', authors: '', journal: '' };
+
+  if (source === 'crossref') {
+    const m = raw.message || {};
+    return {
+      title: (m.title && m.title[0]) || '',
+      year:  (m.created?.['date-parts']?.[0]?.[0]) || (m.issued?.['date-parts']?.[0]?.[0]) || '',
+      authors: (m.author||[]).map(a=>[a.given,a.family].filter(Boolean).join(' ')).join(', '),
+      journal: (m['container-title'] && m['container-title'][0]) || ''
+    };
+  }
+
+  if (source === 'doi.org') { // CSL-JSON
+    const m = raw || {};
+    const year = (m.issued?.['date-parts']?.[0]?.[0]) || '';
+    const authors = (m.author||[]).map(a=>{
+      if (a.family || a.given) return [a.given, a.family].filter(Boolean).join(' ');
+      return a.name || ''; // 組織名など
+    }).join(', ');
+    return {
+      title: Array.isArray(m.title) ? m.title[0] : (m.title || ''),
+      year,
+      authors,
+      journal: Array.isArray(m['container-title']) ? m['container-title'][0] : (m['container-title'] || '')
+    };
+  }
+
+  if (source === 'datacite') {
+    const a = raw.data?.attributes || {};
+    const year = a.publicationYear || '';
+    const authors = (a.creators||a.contributors||[]).map(p=>{
+      return [p.givenName, p.familyName, p.name].filter(Boolean)[0] || '';
+    }).filter(Boolean).join(', ');
+    const title = (a.titles && a.titles[0]?.title) || '';
+    const journal = (a.container && a.container['title']) || (a.publisher || '');
+    return { title, year, authors, journal };
+  }
+
+  return { title: '(取得失敗)', year: '', authors: '', journal: '' };
 }
 
 /** ▼ フィルタ＆ソート */
@@ -120,20 +190,16 @@ function sortBy(items, mode){
 }
 
 /** ▼ グローバル状態 */
-let records = []; // {doi,tags,notes,meta}
+let records = []; // {doi,tags,notes,meta,source}
 
 /** ▼ 起動処理 */
 async function boot(){
   try{
     const rows = await fetchCsv(DATA_SRC);
     records = await Promise.all(rows.map(async r=>{
-      try{
-        const cr = await fetchCrossref(r.doi);
-        const cite = toCite(cr);
-        return { doi:r.doi, tags:r.tags||'', notes:r.notes||'', meta:cite };
-      }catch(e){
-        return { doi:r.doi, tags:r.tags||'', notes:r.notes||'', meta:{title:'(取得失敗)', authors:'', journal:'', year:''}};
-      }
+      const meta = await fetchMeta(r.doi);
+      const cite = toCite(meta);
+      return { doi:r.doi, tags:r.tags||'', notes:r.notes||'', meta:cite, source:meta.source };
     }));
     render();
   }catch(err){
@@ -167,8 +233,8 @@ function render(){
         <div class="row" style="margin:.4rem 0">${tags}</div>
         ${notes}
         <div class="row" style="margin-top:.6rem">
-          <button class="pill btn" onclick="downloadBibtexUTF8('${doiEnc}')">BibTeX（Crossref/UTF-8保存）</button>
-          <code class="pill">${escapeHtml(r.doi)}</code>
+          <button class="pill btn" onclick="downloadBibtexUTF8('${doiEnc}')">BibTeX（UTF-8保存）</button>
+          <code class="pill" title="source: ${r.source||'unknown'}">${escapeHtml(r.doi)}</code>
         </div>
       </div>`;
   }).join('');
@@ -176,14 +242,29 @@ function render(){
   document.getElementById('count').textContent = `${arr.length} 件`;
 }
 
-/** ▼ 文字化け対策：Crossref原本を取得し、UTF-8明示で保存 */
+/** ▼ BibTeX取得（Crossref → CrossCite → doi.org の順でフォールバック）+ UTF-8保存 */
 async function downloadBibtexUTF8(doiEnc){
   const doi = decodeURIComponent(doiEnc);
-  const url = 'https://api.crossref.org/works/' + encodeURIComponent(doi) + '/transform/application/x-bibtex';
-  const res = await fetch(url, { headers: { 'Accept': 'application/x-bibtex' }, cache:'no-store' });
-  if(!res.ok) { alert('Crossref取得エラー: ' + res.status); return; }
-  const text = await res.text();
-  // BOMを付与しUTF-8で保存（ブラウザの文字コード誤判定を回避）
+  const tryUrls = [
+    'https://api.crossref.org/works/' + encodeURIComponent(doi) + '/transform/application/x-bibtex',
+    'https://citation.crosscite.org/format?doi=' + encodeURIComponent(doi) + '&style=bibtex',
+    'https://doi.org/' + encodeURIComponent(doi) // AcceptヘッダでBibTeX要求
+  ];
+
+  let text = null;
+  for (const u of tryUrls) {
+    try {
+      const headers = u.includes('doi.org')
+        ? { 'Accept': 'application/x-bibtex' }
+        : { 'Accept': 'text/plain' };
+      const res = await fetch(u, { headers, cache:'no-store' });
+      if (res.ok) { text = await res.text(); break; }
+    } catch {}
+  }
+
+  if (!text) { alert('BibTeXの取得に失敗しました'); return; }
+
+  // UTF-8 + BOM で保存（ブラウザの文字コード誤判定を回避）
   const blob = new Blob(["\uFEFF" + text], { type: 'text/plain;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
