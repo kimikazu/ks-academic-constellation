@@ -40,13 +40,12 @@
 </div>
 
 <script>
-/** ▼ 設定：CSVソース
- * GitHub Pages内の dois.csv を使う場合は既定のまま。
- * Google Sheetsを使う場合は「ウェブに公開（CSV）」URLに差し替えてください。
- */
-const DATA_SRC = 'dois.csv';
-// 例) Google Sheets 公開CSV：
-// const DATA_SRC = 'https://docs.google.com/spreadsheets/d/XXXX/export?format=csv&gid=0';
+/** ▼ CSVソース（同階層の dois.csv を想定）+ キャッシュバスター */
+const DATA_SRC = (()=>{
+  const u = new URL('dois.csv', location.href);
+  u.searchParams.set('t', Date.now());   // GitHub Pages のキャッシュを回避
+  return u.href;
+})();
 
 /** ▼ Crossrefメタの簡易キャッシュ */
 async function fetchCrossref(doi){
@@ -61,23 +60,29 @@ async function fetchCrossref(doi){
   return json;
 }
 
-/** ▼ CSV読み込み（シンプル実装） */
+/** ▼ CSV読み込み（BOM除去・大小文字無視） */
 async function fetchCsv(url){
   const res = await fetch(url, {cache:'no-store'});
-  if (!res.ok) throw new Error('CSV not found');
+  if (!res.ok) throw new Error('CSV not found: ' + res.status);
   const text = await res.text();
-  const lines = text.trim().split(/\r?\n/);
+  const lines = text.replace(/^\uFEFF/, '').trim().split(/\r?\n/); // BOM除去
   if (!lines.length) return [];
-  const header = splitCsvLine(lines.shift());
+  const rawHeader = splitCsvLine(lines.shift()).map(s => s.replace(/^\uFEFF/, '').trim());
+  const headerLower = rawHeader.map(h => h.toLowerCase());
+  const idx = Object.fromEntries(headerLower.map((h,i)=>[h,i])); // 小文字→index
+
   return lines.map(line=>{
     const cells = splitCsvLine(line);
-    const obj = {};
-    header.forEach((h,i)=>obj[h]=cells[i]??'');
-    return obj;
+    return {
+      doi:   cells[idx['doi']]   ?? '',
+      tags:  cells[idx['tags']]  ?? '',
+      notes: cells[idx['notes']] ?? ''
+    };
   }).filter(r=>r.doi);
 }
+
 function splitCsvLine(line){
-  // ダブルクォート込みの簡易CSV解析（カンマ・改行は最低限扱う）
+  // ダブルクォート対応の簡易CSV
   const re = /("([^"]|"")*"|[^,]+)/g;
   const out = [];
   let m;
@@ -93,8 +98,8 @@ const escapeHtml = s => (s||'').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;'
 function toCite(obj) {
   const m = obj?.message || {};
   const title = (m.title && m.title[0]) || '';
-  �const year = (m.created?.['date-parts']?.[0]?.[0]) || (m.issued?.['date-parts']?.[0]?.[0]) || '';
-  const auth = (m.author||[]).map(a=>[a.given,a.family].filter(Boolean).join(' ')).join(', ');
+  const year  = (m.created?.['date-parts']?.[0]?.[0]) || (m.issued?.['date-parts']?.[0]?.[0]) || '';
+  const auth  = (m.author||[]).map(a=>[a.given,a.family].filter(Boolean).join(' ')).join(', ');
   const journal = (m['container-title'] && m['container-title'][0]) || '';
   return { title, year, authors: auth, journal };
 }
@@ -132,6 +137,7 @@ async function boot(){
     }));
     render();
   }catch(err){
+    console.error(err);
     document.getElementById('list').innerHTML =
       `<div class="muted">読込エラー: ${escapeHtml(String(err))}</div>`;
   }
@@ -178,7 +184,7 @@ async function downloadBibtexUTF8(doiEnc){
   if(!res.ok) { alert('Crossref取得エラー: ' + res.status); return; }
   const text = await res.text();
   // BOMを付与しUTF-8で保存（ブラウザの文字コード誤判定を回避）
-  const blob = new Blob(["\ufeff" + text], { type: 'text/plain;charset=utf-8' });
+  const blob = new Blob(["\uFEFF" + text], { type: 'text/plain;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = (doi.replace(/[^\w.-]+/g,'_')) + '.bib';
