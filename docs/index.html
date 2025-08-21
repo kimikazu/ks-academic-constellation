@@ -12,6 +12,7 @@
   .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:var(--gap)}
   .card{border:1px solid #e5e7eb;border-radius:14px;padding:16px}
   .muted{color:#6b7280;font-size:0.9em}
+  .warn{color:#b45309}
   .row{display:flex;gap:10px;flex-wrap:wrap}
   .tag{background:#eef2ff;border:1px solid #e0e7ff;border-radius:999px;padding:.1rem .6rem;font-size:.85em}
   a{color:#1f6feb;text-decoration:none}
@@ -43,7 +44,7 @@
 /** ▼ CSVソース（同階層の dois.csv を想定）+ キャッシュバスター */
 const DATA_SRC = (() => {
   const u = new URL('dois.csv', location.href);
-  u.searchParams.set('t', Date.now());   // GitHub Pages のキャッシュを回避
+  u.searchParams.set('t', Date.now());
   return u.href;
 })();
 
@@ -56,11 +57,11 @@ async function fetchCsv(url){
   const res = await fetch(url, {cache:'no-store'});
   if (!res.ok) throw new Error('CSV not found: ' + res.status);
   const text = await res.text();
-  const lines = text.replace(/^\uFEFF/, '').trim().split(/\r?\n/); // BOM除去
+  const lines = text.replace(/^\uFEFF/, '').trim().split(/\r?\n/);
   if (!lines.length) return [];
   const rawHeader = splitCsvLine(lines.shift()).map(s => s.replace(/^\uFEFF/, '').trim());
   const headerLower = rawHeader.map(h => h.toLowerCase());
-  const idx = Object.fromEntries(headerLower.map((h,i)=>[h,i])); // 小文字→index
+  const idx = Object.fromEntries(headerLower.map((h,i)=>[h,i]));
 
   return lines.filter(Boolean).map(line=>{
     const cells = splitCsvLine(line);
@@ -72,15 +73,14 @@ async function fetchCsv(url){
   }).filter(r=>r.doi);
 }
 function splitCsvLine(line){
-  // ダブルクォート対応の簡易CSV
-  const re = /("([^"]|"")*"|[^,]+)/g;
+  const re = /("([^"]|"")*"|[^,]+)/g; // ダブルクォート対応
   const out = [];
   let m;
   while ((m = re.exec(line)) !== null) out.push(m[0].replace(/^"(.*)"$/,'$1').replace(/""/g,'"'));
   return out.map(s=>s.trim());
 }
 
-/** ▼ メタデータ取得（Crossref → doi.org/CSL → DataCite の順でフェイルオーバー）+ ローカルキャッシュ */
+/** ▼ メタデータ取得（Crossref → doi.org/CSL → doi.org/citeproc → DataCite → OpenAlex）+ ローカルキャッシュ */
 async function fetchMeta(doi){
   const key = 'meta_' + doi;
   const cached = localStorage.getItem(key);
@@ -106,13 +106,26 @@ async function fetchMeta(doi){
     });
     if (r.ok) {
       const json = await r.json();
-      const out = { source: 'doi.org', raw: json };
+      const out = { source: 'doi.org-csl', raw: json };
       localStorage.setItem(key, JSON.stringify(out));
       return out;
     }
   } catch {}
 
-  // 3) DataCite
+  // 3) doi.org (application/citeproc+json)
+  try {
+    const r = await fetch('https://doi.org/' + encodeURIComponent(doi), {
+      headers: {'Accept': 'application/citeproc+json'}
+    });
+    if (r.ok) {
+      const json = await r.json();
+      const out = { source: 'doi.org-citeproc', raw: json };
+      localStorage.setItem(key, JSON.stringify(out));
+      return out;
+    }
+  } catch {}
+
+  // 4) DataCite
   try {
     const r = await fetch('https://api.datacite.org/dois/' + encodeURIComponent(doi), {
       headers: {'Accept': 'application/json'}
@@ -120,6 +133,20 @@ async function fetchMeta(doi){
     if (r.ok) {
       const json = await r.json();
       const out = { source: 'datacite', raw: json };
+      localStorage.setItem(key, JSON.stringify(out));
+      return out;
+    }
+  } catch {}
+
+  // 5) OpenAlex（多くのDOIをカバー、CORS可）
+  try {
+    // OpenAlexは works/https://doi.org/<DOI> 形式が確実
+    const r = await fetch('https://api.openalex.org/works/https://doi.org/' + encodeURIComponent(doi), {
+      headers: {'Accept': 'application/json'}
+    });
+    if (r.ok) {
+      const json = await r.json();
+      const out = { source: 'openalex', raw: json };
       localStorage.setItem(key, JSON.stringify(out));
       return out;
     }
@@ -145,18 +172,18 @@ function toCite(meta){
     };
   }
 
-  if (source === 'doi.org') { // CSL-JSON
+  if (source === 'doi.org-csl' || source === 'doi.org-citeproc') {
     const m = raw || {};
     const year = (m.issued?.['date-parts']?.[0]?.[0]) || '';
     const authors = (m.author||[]).map(a=>{
       if (a.family || a.given) return [a.given, a.family].filter(Boolean).join(' ');
-      return a.name || ''; // 組織名など
+      return a.name || '';
     }).join(', ');
     return {
       title: Array.isArray(m.title) ? m.title[0] : (m.title || ''),
       year,
       authors,
-      journal: Array.isArray(m['container-title']) ? m['container-title'][0] : (m['container-title'] || '')
+      journal: Array.isArray(m['container-title']) ? m['container-title'][0] : (m['container-title'] || m['container-title-short'] || '')
     };
   }
 
@@ -168,6 +195,15 @@ function toCite(meta){
     }).filter(Boolean).join(', ');
     const title = (a.titles && a.titles[0]?.title) || '';
     const journal = (a.container && a.container['title']) || (a.publisher || '');
+    return { title, year, authors, journal };
+  }
+
+  if (source === 'openalex') {
+    const m = raw || {};
+    const year = m.publication_year || (m.from_publication_date||'').slice(0,4) || '';
+    const authors = (m.authorships||[]).map(x=>x.author?.display_name).filter(Boolean).join(', ');
+    const title = m.title || '';
+    const journal = m.host_venue?.display_name || m.primary_location?.source?.display_name || '';
     return { title, year, authors, journal };
   }
 
@@ -196,11 +232,18 @@ let records = []; // {doi,tags,notes,meta,source}
 async function boot(){
   try{
     const rows = await fetchCsv(DATA_SRC);
-    records = await Promise.all(rows.map(async r=>{
-      const meta = await fetchMeta(r.doi);
-      const cite = toCite(meta);
-      return { doi:r.doi, tags:r.tags||'', notes:r.notes||'', meta:cite, source:meta.source };
-    }));
+    // 並列に叩くとレートに触れやすいので軽くスロットリング
+    const slot = 6;
+    const out = [];
+    for (let i=0; i<rows.length; i+=slot){
+      const batch = rows.slice(i,i+slot).map(async r=>{
+        const meta = await fetchMeta(r.doi);
+        const cite = toCite(meta);
+        return { doi:r.doi, tags:r.tags||'', notes:r.notes||'', meta:cite, source:meta.source };
+      });
+      out.push(...await Promise.all(batch));
+    }
+    records = out;
     render();
   }catch(err){
     console.error(err);
@@ -225,10 +268,11 @@ function render(){
     const title = escapeHtml(r.meta.title || r.doi);
     const authors = escapeHtml(r.meta.authors || '');
     const doiEnc = encodeURIComponent(r.doi);
+    const warn = r.meta.title ? '' : `<span class="pill warn" title="複数ソースを試しましたがタイトルが見つかりませんでした">未取得</span>`;
 
     return `
       <div class="card">
-        <div><a href="${doiUrl}" target="_blank" rel="noopener"><strong>${title}</strong></a>${year}${journal}</div>
+        <div><a href="${doiUrl}" target="_blank" rel="noopener"><strong>${title}</strong></a>${year}${journal} ${warn}</div>
         <div class="muted">${authors}</div>
         <div class="row" style="margin:.4rem 0">${tags}</div>
         ${notes}
@@ -248,7 +292,7 @@ async function downloadBibtexUTF8(doiEnc){
   const tryUrls = [
     'https://api.crossref.org/works/' + encodeURIComponent(doi) + '/transform/application/x-bibtex',
     'https://citation.crosscite.org/format?doi=' + encodeURIComponent(doi) + '&style=bibtex',
-    'https://doi.org/' + encodeURIComponent(doi) // AcceptヘッダでBibTeX要求
+    'https://doi.org/' + encodeURIComponent(doi)
   ];
 
   let text = null;
@@ -264,7 +308,6 @@ async function downloadBibtexUTF8(doiEnc){
 
   if (!text) { alert('BibTeXの取得に失敗しました'); return; }
 
-  // UTF-8 + BOM で保存（ブラウザの文字コード誤判定を回避）
   const blob = new Blob(["\uFEFF" + text], { type: 'text/plain;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
