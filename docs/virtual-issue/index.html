@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>バーチャル・イシュー（教育）リンク集</title>
+<style>
+  :root{--gap:14px}
+  body{font-family:system-ui,"Noto Sans JP",sans-serif;margin:24px}
+  header{display:flex;flex-wrap:wrap;gap:var(--gap);align-items:center;margin-bottom:var(--gap)}
+  input,select,button{padding:.6rem .7rem;font-size:16px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:var(--gap)}
+  .card{border:1px solid #e5e7eb;border-radius:14px;padding:16px}
+  .muted{color:#6b7280;font-size:0.9em}
+  .warn{color:#b45309}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .tag{background:#eef2ff;border:1px solid #e0e7ff;border-radius:999px;padding:.1rem .6rem;font-size:.85em}
+  a{color:#1f6feb;text-decoration:none}
+  a:hover{text-decoration:underline}
+  .pill{border:1px solid #e5e7eb;border-radius:999px;padding:.3rem .6rem;display:inline-block}
+  .right{margin-left:auto}
+  .btn{cursor:pointer;background:#fff}
+  .drop{border:2px dashed #cbd5e1;border-radius:14px;padding:12px;text-align:center}
+  .drop.drag{background:#f8fafc}
+</style>
+</head>
+<body>
+<header>
+  <input id="q" placeholder="タイトル / 著者 / 誌名 / URL / タグで検索" oninput="render()" />
+  <select id="sort" onchange="render()">
+    <option value="year-desc">新しい順</option>
+    <option value="year-asc">古い順</option>
+    <option value="title-asc">タイトルA→Z</option>
+    <option value="title-desc">タイトルZ→A</option>
+  </select>
+  <label class="pill"><input id="eduOnly" type="checkbox" onchange="render()"> 教育のみ</label>
+  <span id="count" class="pill"></span>
+  <span class="right muted">CSVは <code>items.csv</code>（id,url,type,tags,notes）／ドラッグ&ドロップでも取込可</span>
+</header>
+
+<div id="drop" class="drop">WEKOの「エクスポート→JSON」ファイルをここにドロップ（任意）</div>
+<div id="list" class="grid" style="margin-top:12px">
+  <div class="muted">読み込み中…</div>
+</div>
+
+<script>
+/* ============ 設定 ============ */
+// CSVの場所（同階層）
+const DATA_SRC = (()=>{ const u=new URL('items.csv', location.href); u.searchParams.set('t', Date.now()); return u.href; })();
+// 教育インデックスの set 先頭（WEKO JSONの _oai.sets に含まれる値を判定）
+const EDU_SET_PREFIX = '29'; // 例: "29:*" を教育扱いに
+
+/* ============ ユーティリティ ============ */
+const norm = s => (s||'').toString().toLowerCase();
+const escapeHtml = s => (s||'').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+function splitCsvLine(line){ const re=/("([^"]|"")*"|[^,]+)/g; const out=[]; let m; while((m=re.exec(line))!==null) out.push(m[0].replace(/^"(.*)"$/,'$1').replace(/""/g,'"')); return out.map(s=>s.trim()); }
+async function fetchCsv(url){
+  const res = await fetch(url, {cache:'no-store'}); if(!res.ok) throw new Error('CSV not found: '+res.status);
+  const text = await res.text();
+  const lines = text.replace(/^\uFEFF/, '').trim().split(/\r?\n/);
+  if (!lines.length) return [];
+  const header = splitCsvLine(lines.shift()).map(s=>s.replace(/^\uFEFF/,'').trim().toLowerCase());
+  const idx = Object.fromEntries(header.map((h,i)=>[h,i]));
+  return lines.filter(Boolean).map(line=>{
+    const c = splitCsvLine(line);
+    return {
+      id:   (c[idx['id']]   ?? '').trim(),
+      url:  (c[idx['url']]  ?? '').trim(),
+      type: (c[idx['type']] ?? '').trim().toLowerCase(), // 'weko' or 'doi'
+      tags: (c[idx['tags']] ?? '').trim(),
+      notes:(c[idx['notes']]?? '').trim()
+    };
+  }).filter(r=>r.id || r.url);
+}
+const isDOI = s => /^10\.\S+\/\S+$/i.test((s||'').trim());
+const isWekoUrl = u => /\/\/[^\/]*repo\.nii\.ac\.jp\/records?\/\d+/.test(u||'');
+
+/* ============ メタデータ取得 ============ */
+// DOI系（従来）
+async function fetchMetaDOI(doi){
+  // Crossref → doi.org（CSL/citeproc）→ DataCite → OpenAlex
+  const trySteps = [
+    ['crossref', 'https://api.crossref.org/works/'+encodeURIComponent(doi), {Accept:'application/json'}, async r=>({title:r.message?.title?.[0]||'', year:r.message?.issued?.['date-parts']?.[0]?.[0]||r.message?.created?.['date-parts']?.[0]?.[0]||'', authors:(r.message?.author||[]).map(a=>[a.given,a.family].filter(Boolean).join(' ')).join(', '), journal:r.message?.['container-title']?.[0]||''})],
+    ['doi.org-csl','https://doi.org/'+encodeURIComponent(doi), {'Accept':'application/vnd.citationstyles.csl+json'}, async r=>({title:Array.isArray(r.title)?r.title[0]:(r.title||''), year:r.issued?.['date-parts']?.[0]?.[0]||'', authors:(r.author||[]).map(a=>a.family||a.given?[a.given,a.family].filter(Boolean).join(' '):(a.name||'')).join(', '), journal:Array.isArray(r['container-title'])?r['container-title'][0]:(r['container-title']||r['container-title-short']||'')})],
+    ['datacite','https://api.datacite.org/dois/'+encodeURIComponent(doi), {Accept:'application/json'}, async r=>{ const a=r.data?.attributes||{}; return {title:a.titles?.[0]?.title||'', year:a.publicationYear||'', authors:(a.creators||a.contributors||[]).map(p=>[p.givenName,p.familyName,p.name].filter(Boolean)[0]||'').filter(Boolean).join(', '), journal:(a.container?.title)||a.publisher||''};}],
+    ['openalex','https://api.openalex.org/works/https://doi.org/'+encodeURIComponent(doi), {Accept:'application/json'}, async r=>({title:r.title||'', year:r.publication_year||(r.from_publication_date||'').slice(0,4)||'', authors:(r.authorships||[]).map(x=>x.author?.display_name).filter(Boolean).join(', '), journal:r.host_venue?.display_name||r.primary_location?.source?.display_name||''})]
+  ];
+  for (const [source,url,headers,shape] of trySteps){
+    try{ const res=await fetch(url,{headers,cache:'no-store'}); if(res.ok){ const json=await res.json(); return {source, meta: await shape(json)}; } }catch{}
+  }
+  return {source:'none', meta:{title:'',year:'',authors:'',journal:''}};
+}
+
+// WEKO（/records/<id>/export/json）
+async function fetchMetaWEKO(url){
+  const m = /(\/records?\/)(\d+)(\/|$)/.exec(url);
+  if (!m) return {source:'weko', meta:{title:'',year:'',authors:'',journal:''}, raw:null};
+  const jsonUrl = url.replace(m[1]+m[2], `/records/${m[2]}`) + (url.endsWith('/')?'':'') + '/export/json';
+  try{
+    const res = await fetch(jsonUrl, {cache:'no-store'});
+    if (!res.ok) throw 0;
+    const j = await res.json(); const md = j.metadata||{};
+    // タイトル（ja優先→en）
+    const tJa = md.item_title || md.title || (md.item_titles?.attribute_value_mlt?.[0]?.subitem_title) || (j.title?.[0]);
+    const tEn = md.item_titles?.attribute_value_mlt?.find?.(x=>x.subitem_title_language==='en')?.subitem_title;
+    const title = tJa || tEn || '';
+    // 著者
+    const creators = md.item_creator?.attribute_value_mlt || []; // パターンA
+    let authors = '';
+    if (Array.isArray(creators) && creators.length){
+      const names = [];
+      creators.forEach(c=>{
+        if (Array.isArray(c.creatorNames)){
+          c.creatorNames.forEach(n=>names.push(n.creatorName));
+        }else if (c.creatorName){
+          names.push(c.creatorName);
+        }
+      });
+      authors = names.filter(Boolean).join(', ');
+    }
+    // 年（発行日→年）
+    const bib = md.item_10002_biblio_info_7?.attribute_value_mlt?.[0] || {};
+    const issued = (bib.bibliographicIssueDates?.bibliographicIssueDate) || md.publish_date || md.pubdate?.attribute_value || '';
+    const year = (issued||'').toString().slice(0,4);
+    const journal = (bib.bibliographic_titles?.[0]?.bibliographic_title) || '';
+    // 教育インデックス自動タグ
+    const sets = (md._oai?.sets) || j.metadata?._oai?.sets || [];
+    const eduHit = (sets||[]).some(s => (s||'').startsWith(EDU_SET_PREFIX));
+    return {source:'weko-json'+(eduHit?'+edu':''), meta:{title,year,authors,journal}, edu:eduHit, raw:j};
+  }catch(e){
+    return {source:'weko-json-fail', meta:{title:'',year:'',authors:'',journal:''}, raw:null};
+  }
+}
+
+/* ============ BibTeX ============ */
+async function fetchBibtexDOI(doi){
+  const urls = [
+    'https://api.crossref.org/works/'+encodeURIComponent(doi)+'/transform/application/x-bibtex',
+    'https://citation.crosscite.org/format?doi='+encodeURIComponent(doi)+'&style=bibtex',
+    'https://doi.org/'+encodeURIComponent(doi)
+  ];
+  for (const u of urls){
+    try{ const h = u.includes('doi.org')?{'Accept':'application/x-bibtex'}:{'Accept':'text/plain'};
+      const r = await fetch(u,{headers:h,cache:'no-store'}); if(r.ok) return await r.text();
+    }catch{}
+  }
+  return '';
+}
+async function fetchBibtexWEKO(url){
+  const m = /(\/records?\/)(\d+)(\/|$)/.exec(url);
+  if (!m) return '';
+  const b = url.replace(m[1]+m[2], `/records/${m[2]}`) + (url.endsWith('/')?'':'') + '/export/bibtex';
+  try{ const r=await fetch(b,{cache:'no-store'}); if(r.ok) return await r.text(); }catch{}
+  return '';
+}
+function saveAs(name, text){
+  const blob = new Blob(["\uFEFF"+text], { type:'text/plain;charset=utf-8' });
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove();
+}
+
+/* ============ 表示ロジック ============ */
+function passFilter(item, q, eduOnly){
+  if (eduOnly && !item.edu) return false;
+  if (!q) return true;
+  return [item.meta.title, item.meta.authors, item.meta.journal, item.display, item.tags, item.notes]
+    .some(v => norm(v).includes(q));
+}
+function sortBy(items, mode){
+  const byYear=(a,b)=>(b.meta.year||0)-(a.meta.year||0);
+  const byTitle=(a,b)=>(a.meta.title||'').localeCompare(b.meta.title||'');
+  if (mode==='year-asc') return items.sort((a,b)=>-byYear(a,b));
+  if (mode==='title-asc') return items.sort(byTitle);
+  if (mode==='title-desc') return items.sort((a,b)=>-byTitle(a,b));
+  return items.sort(byYear);
+}
+
+let records=[];
+
+/* ============ 起動 & 取込 ============ */
+async function buildItem(row){
+  // タイプ推定
+  const type = row.type || (isDOI(row.id) || isDOI(row.url) ? 'doi' : (isWekoUrl(row.url) ? 'weko' : 'url'));
+  const out = { type, url: row.url || '', id: row.id || '', tags: row.tags||'', notes: row.notes||'', edu:false, meta:{title:'',year:'',authors:'',journal:''}, source:'none' };
+  if (type==='doi'){
+    const doi = row.id && isDOI(row.id) ? row.id : (row.url||'').replace(/^https?:\/\/doi\.org\//i,'');
+    const m = await fetchMetaDOI(doi);
+    out.meta = m.meta; out.source = m.source; out.display = doi; out.link = 'https://doi.org/'+encodeURIComponent(doi);
+  }else if (type==='weko'){
+    const m = await fetchMetaWEKO(out.url);
+    out.meta = m.meta; out.source = m.source; out.edu = !!m.edu; out.display = out.url; out.link = out.url;
+  }else{
+    out.display = out.url||out.id; out.link = out.url||'#';
+  }
+  return out;
+}
+
+async function boot(){
+  try{
+    const rows = await fetchCsv(DATA_SRC);
+    const slot=6, tmp=[];
+    for (let i=0;i<rows.length;i+=slot){
+      const batch = rows.slice(i,i+slot).map(r=>buildItem(r));
+      tmp.push(...await Promise.all(batch));
+    }
+    records = tmp;
+    render();
+  }catch(e){
+    console.error(e);
+    document.getElementById('list').innerHTML = `<div class="muted">読込エラー: ${escapeHtml(String(e))}</div>`;
+  }
+}
+
+function render(){
+  const q = norm(document.getElementById('q').value);
+  const mode = document.getElementById('sort').value;
+  const eduOnly = document.getElementById('eduOnly').checked;
+  const target = document.getElementById('list');
+  const arr = sortBy(records.filter(r=>passFilter(r,q,eduOnly)), mode);
+
+  target.innerHTML = arr.map(r=>{
+    const year = r.meta.year ? ` (${r.meta.year})` : '';
+    const tags = (r.tags||'').split(';').map(s=>s.trim()).filter(Boolean).map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join(' ');
+    const notes = r.notes ? `<div class="muted">📝 ${escapeHtml(r.notes)}</div>`:'';
+    const journal = r.meta.journal ? `<span class="muted"> — ${escapeHtml(r.meta.journal)}</span>` : '';
+    const title = escapeHtml(r.meta.title || r.display);
+    const authors = escapeHtml(r.meta.authors || '');
+    const src = r.source ? `<span class="pill muted">${r.source}</span>` : '';
+    const edu = r.edu ? `<span class="pill">教育</span>` : '';
+    const showBibBtn = (r.type==='doi' || r.type==='weko');
+
+    return `
+      <div class="card">
+        <div><a href="${r.link}" target="_blank" rel="noopener"><strong>${title}</strong></a>${year}${journal}</div>
+        <div class="muted">${authors}</div>
+        <div class="row" style="margin:.4rem 0">${tags} ${edu}</div>
+        ${notes}
+        <div class="row" style="margin-top:.6rem;align-items:center;gap:8px">
+          ${showBibBtn?`<button class="pill btn" onclick="onBib('${encodeURIComponent(r.type)}','${encodeURIComponent(r.id)}','${encodeURIComponent(r.url)}')">BibTeX</button>`:''}
+          ${src}
+          <code class="pill">${escapeHtml(r.display)}</code>
+        </div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('count').textContent = `${arr.length} 件`;
+}
+
+async function onBib(typeEnc, idEnc, urlEnc){
+  const type = decodeURIComponent(typeEnc);
+  const id = decodeURIComponent(idEnc);
+  const url = decodeURIComponent(urlEnc);
+  let text = '';
+  if (type==='doi'){
+    const doi = isDOI(id) ? id : url.replace(/^https?:\/\/doi\.org\//i,'');
+    text = await fetchBibtexDOI(doi);
+    if (!text){ alert('BibTeX取得に失敗しました'); return; }
+    saveAs((doi.replace(/[^\w.-]+/g,'_'))+'.bib', text);
+  }else if (type==='weko'){
+    text = await fetchBibtexWEKO(url);
+    // 不完全なことがあるので、JSONから最小限を合成
+    if (!/title\s*=|year\s*=|author\s*=/.test(text||'')){
+      const m = await fetchMetaWEKO(url);
+      const T = m.meta||{};
+      const safe = s => (s||'').replace(/[{}"]/g,'');
+      text = `@article{,
+  title={${safe(T.title)}},
+  author={${safe(T.authors)}},
+  year={${safe(T.year)}},
+  journal={${safe(T.journal)}},
+  url={${url}}
+}`;
+    }
+    saveAs(('weko_'+(url.split('/').pop()||'record'))+'.bib', text);
+  }
+}
+
+/* ============ D&D 取込（WEKO Export JSONをその場で読み込む・任意） ============ */
+const drop = document.getElementById('drop');
+['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev, e=>{ e.preventDefault(); drop.classList.add('drag'); }));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev, e=>{ e.preventDefault(); drop.classList.remove('drag'); }));
+drop.addEventListener('drop', async e=>{
+  const f = e.dataTransfer.files?.[0]; if (!f) return;
+  const text = await f.text(); let obj=null;
+  try{ obj = JSON.parse(text); }catch{ alert('JSONとして読み取れません'); return; }
+  // WEKOの items/export JSON も /records/<id>/export/json と似た形なので汎用に拾う
+  const list = Array.isArray(obj)? obj : (obj.hits?.hits || obj?.items || []);
+  if (!list.length){ alert('項目が見つかりません'); return; }
+  const tmp=[];
+  for (const it of list){
+    const recid = it.recid || it.metadata?.recid || it.id || it.metadata?.id;
+    if (!recid) continue;
+    const url = `https://hokuriku.repo.nii.ac.jp/records/${recid}`;
+    tmp.push(await buildItem({id:String(recid), url, type:'weko'}));
+  }
+  records = tmp; render();
+});
+
+boot();
+</script>
+</body>
+</html>
