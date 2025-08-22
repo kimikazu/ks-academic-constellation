@@ -1,0 +1,30 @@
+[
+  {
+    "link": "https://hokuriku.repo.nii.ac.jp/records/2000222",
+    "display": "https://hokuriku.repo.nii.ac.jp/records/2000222",
+    "tags": "教育;紀要",
+    "notes": "テスト",
+    "source": "weko-json",
+    "meta": {
+      "title": "医療系教育におけるStudent Assistant 制度を 利用した学修支援の効果",
+      "authors": "小倉亮介, 杉森公一",
+      "year": "2025",
+      "journal": "北陸大学紀要"
+    },
+    "edu": false
+  },
+  {
+    "link": "https://hokuriku.repo.nii.ac.jp/records/578",
+    "display": "https://hokuriku.repo.nii.ac.jp/records/578",
+    "tags": "教育",
+    "notes": "JSON直取りの動作確認",
+    "source": "weko-json+edu",
+    "meta": {
+      "title": "道徳教育における宗教的情操  −『善の研究』における宗教と道徳の関係性から−",
+      "authors": "東風, 安生, コチ, ヤスオ, Kochi, Yasuo",
+      "year": "2019",
+      "journal": "北陸大学紀要"
+    },
+    "edu": true
+  }
+]
