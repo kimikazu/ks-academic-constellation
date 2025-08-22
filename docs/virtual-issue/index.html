@@ -123,4 +123,217 @@ function normalizeWekoUrl(id, url){
 /* ===== メタ取得：DOI ===== */
 async function fetchMetaDOI(doi){
   const steps = [
-    ['crossref','https://api.crossref.org/]()
+    ['crossref','https://api.crossref.org/works/'+encodeURIComponent(doi), {'Accept':'application/json'}, j=>({title:j.message?.title?.[0]||'',year:j.message?.issued?.['date-parts']?.[0]?.[0]||j.message?.created?.['date-parts']?.[0]?.[0]||'',authors:(j.message?.author||[]).map(a=>[a.given,a.family].filter(Boolean).join(' ')).join(', '),journal:j.message?.['container-title']?.[0]||''})],
+    ['doi.org-csl','https://doi.org/'+encodeURIComponent(doi), {'Accept':'application/vnd.citationstyles.csl+json'}, j=>({title:Array.isArray(j.title)?j.title[0]:(j.title||''),year:j.issued?.['date-parts']?.[0]?.[0]||'',authors:(j.author||[]).map(a=>a.family||a.given?[a.given,a.family].filter(Boolean).join(' '):(a.name||'')).join(', '),journal:Array.isArray(j['container-title'])?j['container-title'][0]:(j['container-title']||j['container-title-short']||'')})],
+    ['datacite','https://api.datacite.org/dois/'+encodeURIComponent(doi), {'Accept':'application/json'}, j=>{const a=j.data?.attributes||{}; return {title:a.titles?.[0]?.title||'',year:a.publicationYear||'',authors:(a.creators||a.contributors||[]).map(p=>[p.givenName,p.familyName,p.name].filter(Boolean)[0]||'').filter(Boolean).join(', '),journal:(a.container?.title)||a.publisher||''};}],
+    ['openalex','https://api.openalex.org/works/https://doi.org/'+encodeURIComponent(doi), {'Accept':'application/json'}, j=>({title:j.title||'',year:j.publication_year||(j.from_publication_date||'').slice(0,4)||'',authors:(j.authorships||[]).map(x=>x.author?.display_name).filter(Boolean).join(', '),journal:j.host_venue?.display_name||j.primary_location?.source?.display_name||''})]
+  ];
+  for (const [src,u,h,shape] of steps){
+    try{ const r=await fetch(u,{headers:h,cache:'no-store'}); log('DOI step',src,'status',r.status); if(r.ok){ const json=await r.json(); return {source:src, meta:shape(json)}; } }catch(e){ log('DOI step error',src,e); }
+  }
+  return {source:'none', meta:{title:'',year:'',authors:'',journal:''}};
+}
+
+/* ===== メタ取得：WEKO ===== */
+async function fetchMetaWEKO(absUrl){
+  if (!absUrl) return {source:'weko-json-fail', meta:emptyMeta(), edu:false};
+  try{
+    const u = new URL(absUrl);
+    const m = /\/records?\/(\d+)/.exec(u.pathname);
+    if (!m) return {source:'weko-json-fail', meta:emptyMeta(), edu:false};
+    const jsonUrl = `${u.protocol}//${u.host}/records/${m[1]}/export/json`;
+    log('WEKO json:', jsonUrl);
+    const res = await fetch(jsonUrl, { cache:'no-store' });
+    log('WEKO status:', res.status);
+    if (!res.ok) throw new Error('status '+res.status);
+    const j = await res.json();
+    const md = j.metadata || {};
+    const titleCandidates = [
+      md.item_title,
+      md.item_titles?.attribute_value_mlt?.[0]?.subitem_title,
+      Array.isArray(j.title) ? j.title[0] : j.title,
+      md.title
+    ].filter(Boolean);
+    const title = (titleCandidates.find(Boolean) || '').toString();
+    let authors = '';
+    const creators = md.item_creator?.attribute_value_mlt || md.creators || [];
+    const names = [];
+    if (Array.isArray(creators)){
+      creators.forEach(c=>{
+        if (Array.isArray(c.creatorNames)) c.creatorNames.forEach(n=>n?.creatorName && names.push(n.creatorName));
+        else if (c.creatorName) names.push(c.creatorName);
+        else if (typeof c.name === 'string') names.push(c.name);
+      });
+    }
+    authors = names.filter(Boolean).join(', ');
+    const bib = md.item_10002_biblio_info_7?.attribute_value_mlt?.[0] || {};
+    const issued = bib.bibliographicIssueDates?.bibliographicIssueDate || md.publish_date || md.pubdate?.attribute_value || '';
+    const year = (issued||'').toString().slice(0,4);
+    const journal = (bib.bibliographic_titles?.[0]?.bibliographic_title) || '';
+    const sets = md._oai?.sets || j.metadata?._oai?.sets || [];
+    const eduHit = Array.isArray(sets) && sets.some(s => (s||'').startsWith(EDU_SET_PREFIX));
+    return { source:'weko-json', meta:{ title, authors, year, journal }, edu:eduHit };
+  }catch(e){
+    log('WEKO fetch error:', String(e));
+    return { source:'weko-json-fail', meta:emptyMeta(), edu:false };
+  }
+}
+
+function emptyMeta(){ return { title:'', authors:'', year:'', journal:'' }; }
+
+/* ===== 表示ロジック ===== */
+function passFilter(item, q, eduOnly){
+  if (eduOnly && !item.edu) return false;
+  if (!q) return true;
+  return [item.meta.title, item.meta.authors, item.meta.journal, item.display, item.tags, item.notes]
+    .some(v => norm(v).includes(q));
+}
+function sortBy(items, mode){
+  const byYear=(a,b)=>(b.meta.year||0)-(a.meta.year||0);
+  const byTitle=(a,b)=>(a.meta.title||'').localeCompare(b.meta.title||'');
+  if (mode==='year-asc') return items.sort((a,b)=>-byYear(a,b));
+  if (mode==='title-asc') return items.sort(byTitle);
+  if (mode==='title-desc') return items.sort((a,b)=>-byTitle(a,b));
+  return items.sort(byYear);
+}
+
+let records=[];
+
+/* ===== ビルド ===== */
+async function buildItem(row){
+  const guessed = isDOI(row.id)||isDOI(row.url) ? 'doi'
+                 : (isWekoUrl(row.url)||row.type==='weko') ? 'weko'
+                 : (row.type||'url');
+  const type = (row.type||guessed||'').toLowerCase();
+  const out = { type, rawId: row.id||'', rawUrl: row.url||'', tags: row.tags||'', notes: row.notes||'', edu:false, meta:emptyMeta(), source:'none' };
+
+  if (type==='doi'){
+    const doi = isDOI(row.id) ? row.id : (row.url||'').replace(/^https?:\/\/doi\.org\//i,'');
+    const m = await fetchMetaDOI(doi);
+    out.meta = m.meta; out.source = m.source; out.display = doi; out.link = 'https://doi.org/'+encodeURIComponent(doi);
+  }else if (type==='weko'){
+    const absUrl = normalizeWekoUrl(row.id, row.url);
+    log('normalizeWekoUrl:', row.id, row.url, '=>', absUrl||'(empty)');
+    out.display = absUrl || (row.url || row.id || '(リンク不明)');
+    out.link = absUrl || '';
+    const m = await fetchMetaWEKO(absUrl);
+    out.meta = m.meta; out.source = m.source; out.edu = !!m.edu;
+  }else{
+    const link = isHttp(row.url) ? row.url : '';
+    out.display = link || (row.url || row.id || '(リンク不明)');
+    out.link = link;
+  }
+  return out;
+}
+
+async function boot(){
+  const start = Date.now();
+  const timeout = setTimeout(()=>{
+    const tips = `⚠️ 読み込みが長引いています。
+- items.csv が存在しない / 場所が違う（このURLで開けるか確認）
+- GitHub Pages の公開ブランチ/フォルダ設定が index.html と一致していない
+- CSV が UTF-16 で保存されている（UTF-8 で保存し直す）
+- ブラウザ拡張機能によるブロック
+`;
+    document.getElementById('list').innerHTML = `<div class="muted">${tips.replace(/\n/g,'<br>')}</div>`;
+  }, 3000);
+
+  try{
+    const rows = await fetchCsv(DATA_SRC);
+    clearTimeout(timeout);
+    if (!rows.length){
+      document.getElementById('list').innerHTML = `<div class="muted">CSVは読み込めましたが、行がありません。</div>`;
+      document.getElementById('upload').style.display = 'flex';
+      return;
+    }
+    const slot=6, tmp=[];
+    for (let i=0;i<rows.length;i+=slot){
+      const batch = rows.slice(i,i+slot).map(r=>buildItem(r));
+      tmp.push(...await Promise.all(batch));
+    }
+    records = tmp;
+    log('records built:', records.length, 'in', (Date.now()-start)+'ms');
+    render();
+  }catch(e){
+    clearTimeout(timeout);
+    log('boot error:', e);
+    document.getElementById('list').innerHTML = `<div class="muted">読込エラー: ${escapeHtml(String(e))}</div>`;
+    document.getElementById('upload').style.display = 'flex';
+  }
+}
+
+function render(){
+  const q = norm(document.getElementById('q').value);
+  const mode = document.getElementById('sort').value;
+  const eduOnly = document.getElementById('eduOnly').checked;
+  const target = document.getElementById('list');
+  const arr = sortBy(records.filter(r=>passFilter(r,q,eduOnly)), mode);
+
+  target.innerHTML = arr.map(r=>{
+    const year = r.meta.year ? ` (${r.meta.year})` : '';
+    const tags = (r.tags||'').split(';').map(s=>s.trim()).filter(Boolean).map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join(' ');
+    const notes = r.notes ? `<div class="muted">📝 ${escapeHtml(r.notes)}</div>`:'';
+    const journal = r.meta.journal ? `<span class="muted"> — ${escapeHtml(r.meta.journal)}</span>` : '';
+    const title = escapeHtml(r.meta.title || r.display);
+    const authors = escapeHtml(r.meta.authors || '');
+    const src = r.source ? `<span class="pill muted">${r.source}</span>` : '';
+    const edu = r.edu ? `<span class="pill">教育</span>` : '';
+    const href = r.link || 'javascript:void(0)';
+    const cls  = r.link ? '' : 'dead';
+    const warn = (!r.link) ? `<span class="pill warn" title="URLを正規化できませんでした。id/url列を確認してください。">リンク不明</span>` : '';
+    return `
+      <div class="card">
+        <div><a class="${cls}" href="${href}" target="${r.link ? '_blank' : ''}" rel="noopener"><strong>${title}</strong></a>${year}${journal} ${warn}</div>
+        <div class="muted">${authors}</div>
+        <div class="row" style="margin:.4rem 0">${tags} ${edu}</div>
+        ${notes}
+        <div class="row" style="margin-top:.6rem;align-items:center;gap:8px">
+          ${src}
+          <code class="pill">${escapeHtml(r.display)}</code>
+        </div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('count').textContent = `${arr.length} 件`;
+}
+
+/* ===== ローカルCSVアップロード（失敗時の動作確認用） ===== */
+document.getElementById('file').addEventListener('change', async e=>{
+  const f = e.target.files?.[0]; if(!f) return;
+  const text = await f.text();
+  const blob = new Blob([text], {type:'text/plain'});
+  const url = URL.createObjectURL(blob);
+  try{
+    const rows = await fetchCsv(url);
+    const slot=6, tmp=[];
+    for (let i=0;i<rows.length;i+=slot){
+      const batch = rows.slice(i,i+slot).map(r=>buildItem(r));
+      tmp.push(...await Promise.all(batch));
+    }
+    records = tmp; render(); log('loaded via upload:', rows.length);
+  }catch(err){
+    log('upload parse error:', err);
+  }
+});
+
+function loadSample(){
+  const sample = `id,url,type,tags,notes
+2000222,,weko,教育;紀要,テスト
+578,,weko,教育,JSON直取りの動作確認`;
+  const blob = new Blob([sample], {type:'text/plain'});
+  const url = URL.createObjectURL(blob);
+  document.getElementById('file').value = '';
+  fetchCsv(url).then(async rows=>{
+    const slot=6, tmp=[];
+    for (let i=0;i<rows.length;i+=slot){
+      const batch = rows.slice(i,i+slot).map(r=>buildItem(r));
+      tmp.push(...await Promise.all(batch));
+    }
+    records = tmp; render(); log('sample loaded');
+  });
+}
+
+boot();
+</script>
+</body>
+</html>
