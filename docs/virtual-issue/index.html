@@ -22,8 +22,7 @@
   .btn{cursor:pointer;background:#fff}
   .dead{pointer-events:none;color:#94a3b8;text-decoration:none}
   #dbgBtn{position:fixed;right:12px;top:10px}
-  #dbg{position:fixed;right:12px;top:48px;width:min(520px,90vw);height:40vh;overflow:auto;background:#0b1020;color:#d1d5db;border:1px solid #1f2937;border-radius:12px;padding:10px;display:none;white-space:pre-wrap;font:12px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace}
-  #upload{display:none;gap:8px;align-items:center;margin-top:8px}
+  #dbg{position:fixed;right:12px;top:48px;width:min(520px,90vw);height:40vh;overflow:auto;background:#0b1020;color:#d1d5db;border:1px solid #1f2937;border-radius:12px;padding:10px;display:none;white-space:pre-wrap;font:12px/1.4 ui-monospace,Menlo,Consolas,monospace}
 </style>
 </head>
 <body>
@@ -37,90 +36,71 @@
   </select>
   <label class="pill"><input id="eduOnly" type="checkbox" onchange="render()"> 教育のみ</label>
   <span id="count" class="pill"></span>
-  <span class="right muted">CSVは <code>items.csv</code>（id,url,type,tags,notes）</span>
+  <span class="right muted">ソース: <code>items.cache.json</code>（無ければ <code>items.csv</code>）</span>
 </header>
 
 <button id="dbgBtn" class="pill btn" onclick="toggleDbg()">🧪デバッグ</button>
 <pre id="dbg"></pre>
-
-<div id="upload" class="pill">
-  <span>CSVが読めませんでした。ファイルを選ぶとその場で表示テストができます →</span>
-  <input type="file" id="file" accept=".csv,text/csv" />
-  <button class="pill btn" onclick="loadSample()">サンプル挿入</button>
-</div>
 
 <div id="list" class="grid" style="margin-top:8px">
   <div class="muted">読み込み中…</div>
 </div>
 
 <script>
-/* ===== 設定 ===== */
-const REPO_HOST = 'hokuriku.repo.nii.ac.jp'; // 他リポジトリなら変更
-const EDU_SET_PREFIX = '29';
-const DATA_SRC = (()=>{ const u=new URL('items.csv', location.href); u.searchParams.set('t', Date.now()); return u.href; })();
+/* ==== 設定（環境に合わせて必要なら変更） ==== */
+const REPO_HOST = 'hokuriku.repo.nii.ac.jp'; // WEKOホスト
+const EDU_SET_PREFIX = '29';                  // 教育セット判定
+const ROOT = location.pathname.replace(/\/[^/]*$/, '/'); // この index.html のディレクトリ
+const CSV_URL = new URL('items.csv', location.href).toString();
+const CACHE_URL = new URL('items.cache.json', location.href).toString();
 
-/* ===== デバッグ ===== */
-const $dbg = ()=>document.getElementById('dbg');
-function log(...args){ console.log(...args); try{ $dbg().textContent += args.map(a=>typeof a==='string'?a:JSON.stringify(a)).join(' ')+'\n'; }catch{} }
-function toggleDbg(){ const el=$dbg(); el.style.display = el.style.display==='none'?'block':'none'; }
-window.addEventListener('error', e=>{ log('window.onerror:', e.message, '@', e.filename, e.lineno+':'+e.colno); });
-window.addEventListener('unhandledrejection', e=>{ log('unhandledrejection:', String(e.reason||e)); });
+/* ==== デバッグ ==== */
+const $dbg=()=>document.getElementById('dbg');
+function log(...a){ console.log(...a); try{$dbg().textContent+=a.map(x=>typeof x==='string'?x:JSON.stringify(x)).join(' ')+'\n';}catch{} }
+function toggleDbg(){ const el=$dbg(); el.style.display=el.style.display==='none'?'block':'none'; }
+window.addEventListener('error', e=>log('onerror:', e.message));
+window.addEventListener('unhandledrejection', e=>log('unhandledrejection:', String(e.reason||e)));
 
-/* ===== ユーティリティ ===== */
+/* ==== ユーティリティ ==== */
 const norm = s => (s||'').toString().toLowerCase();
-const escapeHtml = s => (s||'').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+const escapeHtml = s => (s||'').replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
 const isHttp = s => /^https?:\/\//i.test(s||'');
 const isDOI  = s => /^10\.\S+\/\S+$/i.test((s||'').trim());
 const isWekoUrl = u => /\/records?\/\d+/.test(u||'');
 
-function splitCsvLine(line){
-  const re=/("([^"]|"")*"|[^,]+)/g; const out=[]; let m;
-  while((m=re.exec(line))!==null) out.push(m[0].replace(/^"(.*)"$/,'$1').replace(/""/g,'"'));
-  return out.map(s=>s.trim());
-}
-
+function splitCsvLine(line){ const re=/("([^"]|"")*"|[^,]+)/g; const out=[]; let m; while((m=re.exec(line))!==null) out.push(m[0].replace(/^"(.*)"$/,'$1').replace(/""/g,'"')); return out.map(s=>s.trim()); }
 async function fetchCsv(url){
   log('fetchCsv:', url);
-  const res = await fetch(url, {cache:'no-store'}).catch(err=>{ log('fetchCsv error:', err); throw err; });
-  log('fetchCsv status:', res.status, res.statusText);
-  if(!res.ok) throw new Error('CSV not found: '+res.status);
-  const text = await res.text();
-  // UTF-16 の場合に文字化けで空配列になるのを防ぐため BOM を幅広く剥がす
-  const t = text.replace(/^\uFEFF|\u0000/g,'');
-  const lines = t.trim().split(/\r?\n/);
+  const r = await fetch(url,{cache:'no-store'});
+  log('fetchCsv status:', r.status);
+  if(!r.ok) throw new Error('CSV not found '+r.status);
+  const t = (await r.text()).replace(/^\uFEFF|\u0000/g,'').trim();
+  const lines = t? t.split(/\r?\n/) : [];
   if(!lines.length) return [];
-  const header = splitCsvLine(lines.shift()).map(s=>s.replace(/^\uFEFF/,'').trim().toLowerCase());
+  const header = splitCsvLine(lines.shift()).map(s=>s.toLowerCase());
   log('CSV header:', header.join(','));
   const idx = Object.fromEntries(header.map((h,i)=>[h,i]));
-  const rows = lines.filter(Boolean).map(line=>{
+  return lines.filter(Boolean).map(line=>{
     const c=splitCsvLine(line);
     return {
-      id:   (c[idx['id']]   ?? '').trim(),
-      url:  (c[idx['url']]  ?? '').trim(),
-      type: (c[idx['type']] ?? '').trim().toLowerCase(),
-      tags: (c[idx['tags']] ?? '').trim(),
-      notes:(c[idx['notes']]?? '').trim()
+      id:(c[idx['id']]??'').trim(),
+      url:(c[idx['url']]??'').trim(),
+      type:(c[idx['type']]??'').trim().toLowerCase(),
+      tags:(c[idx['tags']]??'').trim(),
+      notes:(c[idx['notes']]??'').trim()
     };
-  }).filter(r=>r.id || r.url || r.type);
-  log('CSV rows:', rows.length);
-  return rows;
+  });
 }
 
-/* ===== WEKO URL 正規化 ===== */
-function normalizeWekoUrl(id, url){
+/* ==== WEKO URL 正規化 ==== */
+function normalizeWekoUrl(id,url){
   if (isHttp(url) && isWekoUrl(url)) return url;
-  const idFromUrl = (()=> {
-    if (/^\d+$/.test(url)) return url;
-    const m = /\/records?\/(\d+)/.exec(url||'');
-    if (m) return m[1];
-    if (/^records?\/(\d+)/.test(url||'')) return RegExp.$1;
-    return '';
-  })();
-  const recid = idFromUrl || (/^\d+$/.test(id||'') ? id : '');
+  const idFromUrl = (()=>{ if(/^\d+$/.test(url)) return url; const m=/\/records?\/(\d+)/.exec(url||''); if(m) return m[1]; if(/^records?\/(\d+)/.test(url||'')) return RegExp.$1; return ''; })();
+  const recid = idFromUrl || (/^\d+$/.test(id||'')?id:'');
   return recid ? `https://${REPO_HOST}/records/${recid}` : '';
 }
 
-/* ===== メタ取得：DOI ===== */
+/* ==== メタ生成（DOI/WEKO） ==== */
 async function fetchMetaDOI(doi){
   const steps = [
     ['crossref','https://api.crossref.org/works/'+encodeURIComponent(doi), {'Accept':'application/json'}, j=>({title:j.message?.title?.[0]||'',year:j.message?.issued?.['date-parts']?.[0]?.[0]||j.message?.created?.['date-parts']?.[0]?.[0]||'',authors:(j.message?.author||[]).map(a=>[a.given,a.family].filter(Boolean).join(' ')).join(', '),journal:j.message?.['container-title']?.[0]||''})],
@@ -129,210 +109,117 @@ async function fetchMetaDOI(doi){
     ['openalex','https://api.openalex.org/works/https://doi.org/'+encodeURIComponent(doi), {'Accept':'application/json'}, j=>({title:j.title||'',year:j.publication_year||(j.from_publication_date||'').slice(0,4)||'',authors:(j.authorships||[]).map(x=>x.author?.display_name).filter(Boolean).join(', '),journal:j.host_venue?.display_name||j.primary_location?.source?.display_name||''})]
   ];
   for (const [src,u,h,shape] of steps){
-    try{ const r=await fetch(u,{headers:h,cache:'no-store'}); log('DOI step',src,'status',r.status); if(r.ok){ const json=await r.json(); return {source:src, meta:shape(json)}; } }catch(e){ log('DOI step error',src,e); }
+    try{ const r=await fetch(u,{headers:h,cache:'no-store'}); if(r.ok){ const json=await r.json(); return {source:src, meta:shape(json)}; } }catch{}
   }
   return {source:'none', meta:{title:'',year:'',authors:'',journal:''}};
 }
-
-/* ===== メタ取得：WEKO ===== */
 async function fetchMetaWEKO(absUrl){
-  if (!absUrl) return {source:'weko-json-fail', meta:emptyMeta(), edu:false};
+  if (!absUrl) return {source:'weko-json-fail', meta:{title:'',authors:'',year:'',journal:''}, edu:false};
   try{
     const u = new URL(absUrl);
-    const m = /\/records?\/(\d+)/.exec(u.pathname);
-    if (!m) return {source:'weko-json-fail', meta:emptyMeta(), edu:false};
+    const m = /\/records?\/(\d+)/.exec(u.pathname); if(!m) return {source:'weko-json-fail', meta:{}, edu:false};
     const jsonUrl = `${u.protocol}//${u.host}/records/${m[1]}/export/json`;
-    log('WEKO json:', jsonUrl);
-    const res = await fetch(jsonUrl, { cache:'no-store' });
-    log('WEKO status:', res.status);
-    if (!res.ok) throw new Error('status '+res.status);
-    const j = await res.json();
-    const md = j.metadata || {};
-    const titleCandidates = [
+    const r = await fetch(jsonUrl,{cache:'no-store'}); if(!r.ok) throw new Error('status '+r.status);
+    const j = await r.json(); const md = j.metadata||{};
+    const title = ([
       md.item_title,
       md.item_titles?.attribute_value_mlt?.[0]?.subitem_title,
-      Array.isArray(j.title) ? j.title[0] : j.title,
+      Array.isArray(j.title)?j.title[0]:j.title,
       md.title
-    ].filter(Boolean);
-    const title = (titleCandidates.find(Boolean) || '').toString();
-    let authors = '';
+    ].find(Boolean)||'').toString();
     const creators = md.item_creator?.attribute_value_mlt || md.creators || [];
-    const names = [];
-    if (Array.isArray(creators)){
-      creators.forEach(c=>{
-        if (Array.isArray(c.creatorNames)) c.creatorNames.forEach(n=>n?.creatorName && names.push(n.creatorName));
-        else if (c.creatorName) names.push(c.creatorName);
-        else if (typeof c.name === 'string') names.push(c.name);
-      });
-    }
-    authors = names.filter(Boolean).join(', ');
+    const names=[]; creators.forEach(c=>{ if(Array.isArray(c.creatorNames)) c.creatorNames.forEach(n=>n?.creatorName&&names.push(n.creatorName)); else if(c.creatorName) names.push(c.creatorName); else if(typeof c.name==='string') names.push(c.name); });
+    const authors = names.filter(Boolean).join(', ');
     const bib = md.item_10002_biblio_info_7?.attribute_value_mlt?.[0] || {};
     const issued = bib.bibliographicIssueDates?.bibliographicIssueDate || md.publish_date || md.pubdate?.attribute_value || '';
     const year = (issued||'').toString().slice(0,4);
     const journal = (bib.bibliographic_titles?.[0]?.bibliographic_title) || '';
     const sets = md._oai?.sets || j.metadata?._oai?.sets || [];
-    const eduHit = Array.isArray(sets) && sets.some(s => (s||'').startsWith(EDU_SET_PREFIX));
-    return { source:'weko-json', meta:{ title, authors, year, journal }, edu:eduHit };
+    const eduHit = Array.isArray(sets) && sets.some(s=>(s||'').startsWith(EDU_SET_PREFIX));
+    return {source:'weko-json', meta:{title,authors,year,journal}, edu:eduHit};
   }catch(e){
-    log('WEKO fetch error:', String(e));
-    return { source:'weko-json-fail', meta:emptyMeta(), edu:false };
+    return {source:'weko-json-fail', meta:{title:'',authors:'',year:'',journal:''}, edu:false};
   }
 }
 
-function emptyMeta(){ return { title:'', authors:'', year:'', journal:'' }; }
-
-/* ===== 表示ロジック ===== */
-function passFilter(item, q, eduOnly){
-  if (eduOnly && !item.edu) return false;
-  if (!q) return true;
-  return [item.meta.title, item.meta.authors, item.meta.journal, item.display, item.tags, item.notes]
-    .some(v => norm(v).includes(q));
+/* ==== 表示 ==== */
+function passFilter(item,q,eduOnly){ if(eduOnly && !item.edu) return false; if(!q) return true;
+  return [item.meta.title,item.meta.authors,item.meta.journal,item.display,item.tags,item.notes].some(v=>norm(v).includes(q));
 }
-function sortBy(items, mode){
-  const byYear=(a,b)=>(b.meta.year||0)-(a.meta.year||0);
-  const byTitle=(a,b)=>(a.meta.title||'').localeCompare(b.meta.title||'');
-  if (mode==='year-asc') return items.sort((a,b)=>-byYear(a,b));
-  if (mode==='title-asc') return items.sort(byTitle);
-  if (mode==='title-desc') return items.sort((a,b)=>-byTitle(a,b));
-  return items.sort(byYear);
-}
-
+function sortBy(items,mode){ const byYear=(a,b)=>(b.meta.year||0)-(a.meta.year||0); const byTitle=(a,b)=>(a.meta.title||'').localeCompare(b.meta.title||''); if(mode==='year-asc') return items.sort((a,b)=>-byYear(a,b)); if(mode==='title-asc') return items.sort(byTitle); if(mode==='title-desc') return items.sort((a,b)=>-byTitle(a,b)); return items.sort(byYear); }
 let records=[];
 
-/* ===== ビルド ===== */
-async function buildItem(row){
-  const guessed = isDOI(row.id)||isDOI(row.url) ? 'doi'
-                 : (isWekoUrl(row.url)||row.type==='weko') ? 'weko'
-                 : (row.type||'url');
-  const type = (row.type||guessed||'').toLowerCase();
-  const out = { type, rawId: row.id||'', rawUrl: row.url||'', tags: row.tags||'', notes: row.notes||'', edu:false, meta:emptyMeta(), source:'none' };
-
-  if (type==='doi'){
-    const doi = isDOI(row.id) ? row.id : (row.url||'').replace(/^https?:\/\/doi\.org\//i,'');
-    const m = await fetchMetaDOI(doi);
-    out.meta = m.meta; out.source = m.source; out.display = doi; out.link = 'https://doi.org/'+encodeURIComponent(doi);
-  }else if (type==='weko'){
-    const absUrl = normalizeWekoUrl(row.id, row.url);
-    log('normalizeWekoUrl:', row.id, row.url, '=>', absUrl||'(empty)');
-    out.display = absUrl || (row.url || row.id || '(リンク不明)');
-    out.link = absUrl || '';
-    const m = await fetchMetaWEKO(absUrl);
-    out.meta = m.meta; out.source = m.source; out.edu = !!m.edu;
-  }else{
-    const link = isHttp(row.url) ? row.url : '';
-    out.display = link || (row.url || row.id || '(リンク不明)');
-    out.link = link;
-  }
-  return out;
-}
-
-async function boot(){
-  const start = Date.now();
-  const timeout = setTimeout(()=>{
-    const tips = `⚠️ 読み込みが長引いています。
-- items.csv が存在しない / 場所が違う（このURLで開けるか確認）
-- GitHub Pages の公開ブランチ/フォルダ設定が index.html と一致していない
-- CSV が UTF-16 で保存されている（UTF-8 で保存し直す）
-- ブラウザ拡張機能によるブロック
-`;
-    document.getElementById('list').innerHTML = `<div class="muted">${tips.replace(/\n/g,'<br>')}</div>`;
-  }, 3000);
-
-  try{
-    const rows = await fetchCsv(DATA_SRC);
-    clearTimeout(timeout);
-    if (!rows.length){
-      document.getElementById('list').innerHTML = `<div class="muted">CSVは読み込めましたが、行がありません。</div>`;
-      document.getElementById('upload').style.display = 'flex';
-      return;
-    }
-    const slot=6, tmp=[];
-    for (let i=0;i<rows.length;i+=slot){
-      const batch = rows.slice(i,i+slot).map(r=>buildItem(r));
-      tmp.push(...await Promise.all(batch));
-    }
-    records = tmp;
-    log('records built:', records.length, 'in', (Date.now()-start)+'ms');
-    render();
-  }catch(e){
-    clearTimeout(timeout);
-    log('boot error:', e);
-    document.getElementById('list').innerHTML = `<div class="muted">読込エラー: ${escapeHtml(String(e))}</div>`;
-    document.getElementById('upload').style.display = 'flex';
-  }
-}
-
 function render(){
-  const q = norm(document.getElementById('q').value);
-  const mode = document.getElementById('sort').value;
-  const eduOnly = document.getElementById('eduOnly').checked;
-  const target = document.getElementById('list');
-  const arr = sortBy(records.filter(r=>passFilter(r,q,eduOnly)), mode);
-
-  target.innerHTML = arr.map(r=>{
-    const year = r.meta.year ? ` (${r.meta.year})` : '';
-    const tags = (r.tags||'').split(';').map(s=>s.trim()).filter(Boolean).map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join(' ');
-    const notes = r.notes ? `<div class="muted">📝 ${escapeHtml(r.notes)}</div>`:'';
-    const journal = r.meta.journal ? `<span class="muted"> — ${escapeHtml(r.meta.journal)}</span>` : '';
-    const title = escapeHtml(r.meta.title || r.display);
-    const authors = escapeHtml(r.meta.authors || '');
-    const src = r.source ? `<span class="pill muted">${r.source}</span>` : '';
-    const edu = r.edu ? `<span class="pill">教育</span>` : '';
-    const href = r.link || 'javascript:void(0)';
-    const cls  = r.link ? '' : 'dead';
-    const warn = (!r.link) ? `<span class="pill warn" title="URLを正規化できませんでした。id/url列を確認してください。">リンク不明</span>` : '';
-    return `
-      <div class="card">
-        <div><a class="${cls}" href="${href}" target="${r.link ? '_blank' : ''}" rel="noopener"><strong>${title}</strong></a>${year}${journal} ${warn}</div>
-        <div class="muted">${authors}</div>
-        <div class="row" style="margin:.4rem 0">${tags} ${edu}</div>
-        ${notes}
-        <div class="row" style="margin-top:.6rem;align-items:center;gap:8px">
-          ${src}
-          <code class="pill">${escapeHtml(r.display)}</code>
-        </div>
-      </div>`;
+  const q=norm(document.getElementById('q').value);
+  const mode=document.getElementById('sort').value;
+  const eduOnly=document.getElementById('eduOnly').checked;
+  const arr = sortBy(records.filter(r=>passFilter(r,q,eduOnly)),mode);
+  const html = arr.map(r=>{
+    const year=r.meta.year?` (${r.meta.year})`:'';
+    const tags=(r.tags||'').split(';').map(s=>s.trim()).filter(Boolean).map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join(' ');
+    const notes=r.notes?`<div class="muted">📝 ${escapeHtml(r.notes)}</div>`:'';
+    const journal=r.meta.journal?`<span class="muted"> — ${escapeHtml(r.meta.journal)}</span>`:'';
+    const title=escapeHtml(r.meta.title||r.display);
+    const authors=escapeHtml(r.meta.authors||'');
+    const src=r.source?`<span class="pill muted">${r.source}</span>`:'';
+    const edu=r.edu?`<span class="pill">教育</span>`:'';
+    const href=r.link||'javascript:void(0)'; const cls=r.link?'':'dead';
+    const warn=(!r.link)?`<span class="pill warn">リンク不明</span>`:'';
+    return `<div class="card">
+      <div><a class="${cls}" href="${href}" target="${r.link?'_blank':''}" rel="noopener"><strong>${title}</strong></a>${year}${journal} ${warn}</div>
+      <div class="muted">${authors}</div>
+      <div class="row" style="margin:.4rem 0">${tags} ${edu}</div>
+      ${notes}
+      <div class="row" style="margin-top:.6rem;gap:8px;align-items:center">
+        ${src}
+        <code class="pill">${escapeHtml(r.display)}</code>
+      </div>
+    </div>`;
   }).join('');
-
+  document.getElementById('list').innerHTML = html || `<div class="muted">該当なし</div>`;
   document.getElementById('count').textContent = `${arr.length} 件`;
 }
 
-/* ===== ローカルCSVアップロード（失敗時の動作確認用） ===== */
-document.getElementById('file').addEventListener('change', async e=>{
-  const f = e.target.files?.[0]; if(!f) return;
-  const text = await f.text();
-  const blob = new Blob([text], {type:'text/plain'});
-  const url = URL.createObjectURL(blob);
+/* ==== 起動：cache → csv（fallback） ==== */
+async function boot(){
+  // 1) cache を試す
   try{
-    const rows = await fetchCsv(url);
-    const slot=6, tmp=[];
-    for (let i=0;i<rows.length;i+=slot){
-      const batch = rows.slice(i,i+slot).map(r=>buildItem(r));
-      tmp.push(...await Promise.all(batch));
+    const r = await fetch(CACHE_URL+'?t='+Date.now(), {cache:'no-store'});
+    log('try cache:', r.status);
+    if (r.ok){
+      const cache = await r.json();
+      if (Array.isArray(cache) && cache.length){
+        records = cache;
+        render();
+        return;
+      }
     }
-    records = tmp; render(); log('loaded via upload:', rows.length);
-  }catch(err){
-    log('upload parse error:', err);
+  }catch(e){ log('cache error', String(e)); }
+
+  // 2) csv から（CORSでタイトル取れない場合もURL名で表示）
+  try{
+    const rows = await fetchCsv(CSV_URL+'?t='+Date.now());
+    const built=[];
+    for (const row of rows){
+      const type = row.type || (isDOI(row.id)||isDOI(row.url)?'doi':(isWekoUrl(row.url)?'weko':'url'));
+      if (type==='doi'){
+        const doi = row.id && isDOI(row.id) ? row.id : (row.url||'').replace(/^https?:\/\/doi\.org\//i,'');
+        const m = await fetchMetaDOI(doi);
+        built.push({link:'https://doi.org/'+encodeURIComponent(doi), display:doi, tags:row.tags, notes:row.notes, source:m.source, meta:m.meta, edu:false});
+      }else if (type==='weko'){
+        const abs = normalizeWekoUrl(row.id,row.url);
+        const meta = await fetchMetaWEKO(abs); // CORSなら weko-json-fail
+        built.push({link:abs, display:abs||row.url||row.id, tags:row.tags, notes:row.notes, source:meta.source, meta:meta.meta, edu:meta.edu});
+      }else{
+        built.push({link:isHttp(row.url)?row.url:'', display:row.url||row.id, tags:row.tags, notes:row.notes, source:'url', meta:{title:'',authors:'',year:'',journal:''}, edu:false});
+      }
+    }
+    records = built;
+    render();
+  }catch(e){
+    document.getElementById('list').innerHTML = `<div class="muted">読込エラー: ${escapeHtml(String(e))}</div>`;
   }
-});
-
-function loadSample(){
-  const sample = `id,url,type,tags,notes
-2000222,,weko,教育;紀要,テスト
-578,,weko,教育,JSON直取りの動作確認`;
-  const blob = new Blob([sample], {type:'text/plain'});
-  const url = URL.createObjectURL(blob);
-  document.getElementById('file').value = '';
-  fetchCsv(url).then(async rows=>{
-    const slot=6, tmp=[];
-    for (let i=0;i<rows.length;i+=slot){
-      const batch = rows.slice(i,i+slot).map(r=>buildItem(r));
-      tmp.push(...await Promise.all(batch));
-    }
-    records = tmp; render(); log('sample loaded');
-  });
 }
-
 boot();
 </script>
 </body>
