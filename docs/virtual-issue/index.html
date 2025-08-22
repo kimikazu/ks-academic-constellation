@@ -20,7 +20,10 @@
   .pill{border:1px solid #e5e7eb;border-radius:999px;padding:.3rem .6rem;display:inline-block}
   .right{margin-left:auto}
   .btn{cursor:pointer;background:#fff}
-  .dead{pointer-events:none; color:#94a3b8; text-decoration:none}
+  .dead{pointer-events:none;color:#94a3b8;text-decoration:none}
+  #dbgBtn{position:fixed;right:12px;top:10px}
+  #dbg{position:fixed;right:12px;top:48px;width:min(520px,90vw);height:40vh;overflow:auto;background:#0b1020;color:#d1d5db;border:1px solid #1f2937;border-radius:12px;padding:10px;display:none;white-space:pre-wrap;font:12px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace}
+  #upload{display:none;gap:8px;align-items:center;margin-top:8px}
 </style>
 </head>
 <body>
@@ -37,15 +40,31 @@
   <span class="right muted">CSVは <code>items.csv</code>（id,url,type,tags,notes）</span>
 </header>
 
-<div id="list" class="grid">
+<button id="dbgBtn" class="pill btn" onclick="toggleDbg()">🧪デバッグ</button>
+<pre id="dbg"></pre>
+
+<div id="upload" class="pill">
+  <span>CSVが読めませんでした。ファイルを選ぶとその場で表示テストができます →</span>
+  <input type="file" id="file" accept=".csv,text/csv" />
+  <button class="pill btn" onclick="loadSample()">サンプル挿入</button>
+</div>
+
+<div id="list" class="grid" style="margin-top:8px">
   <div class="muted">読み込み中…</div>
 </div>
 
 <script>
 /* ===== 設定 ===== */
-const DATA_SRC = (()=>{ const u=new URL('items.csv', location.href); u.searchParams.set('t', Date.now()); return u.href; })();
-const REPO_HOST = 'hokuriku.repo.nii.ac.jp'; // ←必要なら変更
+const REPO_HOST = 'hokuriku.repo.nii.ac.jp'; // 他リポジトリなら変更
 const EDU_SET_PREFIX = '29';
+const DATA_SRC = (()=>{ const u=new URL('items.csv', location.href); u.searchParams.set('t', Date.now()); return u.href; })();
+
+/* ===== デバッグ ===== */
+const $dbg = ()=>document.getElementById('dbg');
+function log(...args){ console.log(...args); try{ $dbg().textContent += args.map(a=>typeof a==='string'?a:JSON.stringify(a)).join(' ')+'\n'; }catch{} }
+function toggleDbg(){ const el=$dbg(); el.style.display = el.style.display==='none'?'block':'none'; }
+window.addEventListener('error', e=>{ log('window.onerror:', e.message, '@', e.filename, e.lineno+':'+e.colno); });
+window.addEventListener('unhandledrejection', e=>{ log('unhandledrejection:', String(e.reason||e)); });
 
 /* ===== ユーティリティ ===== */
 const norm = s => (s||'').toString().toLowerCase();
@@ -59,5 +78,49 @@ function splitCsvLine(line){
   while((m=re.exec(line))!==null) out.push(m[0].replace(/^"(.*)"$/,'$1').replace(/""/g,'"'));
   return out.map(s=>s.trim());
 }
+
 async function fetchCsv(url){
-  const res = await fet
+  log('fetchCsv:', url);
+  const res = await fetch(url, {cache:'no-store'}).catch(err=>{ log('fetchCsv error:', err); throw err; });
+  log('fetchCsv status:', res.status, res.statusText);
+  if(!res.ok) throw new Error('CSV not found: '+res.status);
+  const text = await res.text();
+  // UTF-16 の場合に文字化けで空配列になるのを防ぐため BOM を幅広く剥がす
+  const t = text.replace(/^\uFEFF|\u0000/g,'');
+  const lines = t.trim().split(/\r?\n/);
+  if(!lines.length) return [];
+  const header = splitCsvLine(lines.shift()).map(s=>s.replace(/^\uFEFF/,'').trim().toLowerCase());
+  log('CSV header:', header.join(','));
+  const idx = Object.fromEntries(header.map((h,i)=>[h,i]));
+  const rows = lines.filter(Boolean).map(line=>{
+    const c=splitCsvLine(line);
+    return {
+      id:   (c[idx['id']]   ?? '').trim(),
+      url:  (c[idx['url']]  ?? '').trim(),
+      type: (c[idx['type']] ?? '').trim().toLowerCase(),
+      tags: (c[idx['tags']] ?? '').trim(),
+      notes:(c[idx['notes']]?? '').trim()
+    };
+  }).filter(r=>r.id || r.url || r.type);
+  log('CSV rows:', rows.length);
+  return rows;
+}
+
+/* ===== WEKO URL 正規化 ===== */
+function normalizeWekoUrl(id, url){
+  if (isHttp(url) && isWekoUrl(url)) return url;
+  const idFromUrl = (()=> {
+    if (/^\d+$/.test(url)) return url;
+    const m = /\/records?\/(\d+)/.exec(url||'');
+    if (m) return m[1];
+    if (/^records?\/(\d+)/.test(url||'')) return RegExp.$1;
+    return '';
+  })();
+  const recid = idFromUrl || (/^\d+$/.test(id||'') ? id : '');
+  return recid ? `https://${REPO_HOST}/records/${recid}` : '';
+}
+
+/* ===== メタ取得：DOI ===== */
+async function fetchMetaDOI(doi){
+  const steps = [
+    ['crossref','https://api.crossref.org/]()
