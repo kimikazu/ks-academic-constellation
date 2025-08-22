@@ -91,46 +91,55 @@ async function fetchMetaDOI(doi){
   return {source:'none', meta:{title:'',year:'',authors:'',journal:''}};
 }
 
-// WEKO（/records/<id>/export/json）
+// WEKO（/records/<id>/exp// 1) WEKO JSON 取り出し強化（title の取り方を拡張）
 async function fetchMetaWEKO(url){
+  // /records/<id>/export/json へ
   const m = /(\/records?\/)(\d+)(\/|$)/.exec(url);
-  if (!m) return {source:'weko', meta:{title:'',year:'',authors:'',journal:''}, raw:null};
-  const jsonUrl = url.replace(m[1]+m[2], `/records/${m[2]}`) + (url.endsWith('/')?'':'') + '/export/json';
+  if (!m) return {source:'weko-json-fail', meta:emptyMeta(), raw:null};
+
+  const jsonUrl = `${location.protocol}//${new URL(url).host}/records/${m[2]}/export/json`;
   try{
-    const res = await fetch(jsonUrl, {cache:'no-store'});
+    const res = await fetch(jsonUrl, { cache:'no-store' });
     if (!res.ok) throw 0;
-    const j = await res.json(); const md = j.metadata||{};
-    // タイトル（ja優先→en）
-    const tJa = md.item_title || md.title || (md.item_titles?.attribute_value_mlt?.[0]?.subitem_title) || (j.title?.[0]);
-    const tEn = md.item_titles?.attribute_value_mlt?.find?.(x=>x.subitem_title_language==='en')?.subitem_title;
-    const title = tJa || tEn || '';
+    const j = await res.json();
+    const md = j.metadata || {};
+
+    // ★ タイトル候補を総当り（ja優先）
+    const tCandidates = [
+      md.item_title,
+      md.item_titles?.attribute_value_mlt?.[0]?.subitem_title,
+      Array.isArray(j.title) ? j.title[0] : j.title, // レコード直下 title[]
+      md.title
+    ].filter(Boolean);
+    const title = (tCandidates.find(Boolean) || '').toString();
+
     // 著者
-    const creators = md.item_creator?.attribute_value_mlt || []; // パターンA
-    let authors = '';
-    if (Array.isArray(creators) && creators.length){
-      const names = [];
-      creators.forEach(c=>{
-        if (Array.isArray(c.creatorNames)){
-          c.creatorNames.forEach(n=>names.push(n.creatorName));
-        }else if (c.creatorName){
-          names.push(c.creatorName);
-        }
-      });
-      authors = names.filter(Boolean).join(', ');
-    }
-    // 年（発行日→年）
+    const creators = md.item_creator?.attribute_value_mlt || [];
+    const names = [];
+    creators.forEach(c=>{
+      if (Array.isArray(c.creatorNames)) c.creatorNames.forEach(n=>names.push(n.creatorName));
+      else if (c.creatorName) names.push(c.creatorName);
+    });
+    const authors = names.filter(Boolean).join(', ');
+
+    // 年・誌名
     const bib = md.item_10002_biblio_info_7?.attribute_value_mlt?.[0] || {};
-    const issued = (bib.bibliographicIssueDates?.bibliographicIssueDate) || md.publish_date || md.pubdate?.attribute_value || '';
+    const issued = bib.bibliographicIssueDates?.bibliographicIssueDate || md.publish_date || '';
     const year = (issued||'').toString().slice(0,4);
-    const journal = (bib.bibliographic_titles?.[0]?.bibliographic_title) || '';
-    // 教育インデックス自動タグ
-    const sets = (md._oai?.sets) || j.metadata?._oai?.sets || [];
-    const eduHit = (sets||[]).some(s => (s||'').startsWith(EDU_SET_PREFIX));
-    return {source:'weko-json'+(eduHit?'+edu':''), meta:{title,year,authors,journal}, edu:eduHit, raw:j};
+    const journal = bib.bibliographic_titles?.[0]?.bibliographic_title || '';
+
+    return { source:'weko-json', meta:{ title, authors, year, journal }, raw:j };
   }catch(e){
-    return {source:'weko-json-fail', meta:{title:'',year:'',authors:'',journal:''}, raw:null};
+    return { source:'weko-json-fail', meta:emptyMeta(), raw:null };
   }
 }
+
+function emptyMeta(){ return { title:'', authors:'', year:'', journal:'' }; }
+
+// 2) レンダリング時、title があればそれをリンク名に
+//   （既存の render() 内の title 生成行をこれに合わせてください）
+const title = escapeHtml(r.meta.title || r.display);
+
 
 /* ============ BibTeX ============ */
 async function fetchBibtexDOI(doi){
