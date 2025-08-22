@@ -1,0 +1,33 @@
+name: build-virtual-issue-cache
+on:
+  push:
+    paths:
+      - 'docs/virtual-issue/items.csv'
+      - 'docs/virtual-issue/index.html'
+      - 'docs/virtual-issue/scripts/**'
+      - '.github/workflows/build-virtual-issue.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: docs/virtual-issue
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Build items.cache.json
+        run: node scripts/build-cache.mjs
+      - name: Commit cache
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add items.cache.json
+          git diff --cached --quiet || git commit -m "build: update items.cache.json"
+      - name: Push
+        run: git push
