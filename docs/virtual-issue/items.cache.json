@@ -28,17 +28,17 @@
     "edu": true
   },
   {
-    "link": "",
-    "display": "weko",
-    "tags": "",
+    "link": "https://hokuriku.repo.nii.ac.jp/records/2000246",
+    "display": "https://hokuriku.repo.nii.ac.jp/records/2000246",
+    "tags": "教育",
     "notes": "",
-    "source": "url",
+    "source": "weko-json+edu",
     "meta": {
-      "title": "",
-      "authors": "",
-      "year": "",
-      "journal": ""
+      "title": "公認心理師科目「心理演習」におけるAI を用いた 模擬症例生成",
+      "authors": "後藤和史",
+      "year": "2024",
+      "journal": "北陸大学紀要"
     },
-    "edu": false
+    "edu": true
   }
 ]
