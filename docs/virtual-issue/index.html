@@ -144,8 +144,12 @@ async function fetchMetaWEKO(absUrl){
 }
 
 /* ==== 表示 ==== */
-function passFilter(item,q,eduOnly){ if(eduOnly && !item.edu) return false; if(!q) return true;
-  return [item.meta.title,item.meta.authors,item.meta.journal,item.display,item.tags,item.notes].some(v=>norm(v).includes(q));
+function passFilter(item, q, eduOnly){
+  if (eduOnly && !item.edu) return false;
+  if (!q) return true;
+  const kw = Array.isArray(item.keywords) ? item.keywords.join(' ') : '';
+  return [item.meta.title, item.meta.authors, item.meta.journal, item.display, item.tags, item.notes, kw]
+    .some(v => (v||'').toString().toLowerCase().includes(q));
 }
 function sortBy(items,mode){ const byYear=(a,b)=>(b.meta.year||0)-(a.meta.year||0); const byTitle=(a,b)=>(a.meta.title||'').localeCompare(b.meta.title||''); if(mode==='year-asc') return items.sort((a,b)=>-byYear(a,b)); if(mode==='title-asc') return items.sort(byTitle); if(mode==='title-desc') return items.sort((a,b)=>-byTitle(a,b)); return items.sort(byYear); }
 let records=[];
@@ -158,6 +162,7 @@ function render(){
   const html = arr.map(r=>{
     const year=r.meta.year?` (${r.meta.year})`:'';
     const tags=(r.tags||'').split(';').map(s=>s.trim()).filter(Boolean).map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join(' ');
+    const kwChips = (Array.isArray(r.keywords)?r.keywords:[]).slice(0,12).map(k=>`<span class="kw">${escapeHtml(k)}</span>`).join(' ');
     const notes=r.notes?`<div class="muted">📝 ${escapeHtml(r.notes)}</div>`:'';
     const journal=r.meta.journal?`<span class="muted"> — ${escapeHtml(r.meta.journal)}</span>`:'';
     const title=escapeHtml(r.meta.title||r.display);
@@ -169,7 +174,7 @@ function render(){
     return `<div class="card">
       <div><a class="${cls}" href="${href}" target="${r.link?'_blank':''}" rel="noopener"><strong>${title}</strong></a>${year}${journal} ${warn}</div>
       <div class="muted">${authors}</div>
-      <div class="row" style="margin:.4rem 0">${tags} ${edu}</div>
+      <div class="row" style="margin:.4rem 0">${tags} ${kwChips} ${edu}</div>
       ${notes}
       <div class="row" style="margin-top:.6rem;gap:8px;align-items:center">
         ${src}
