@@ -215,5 +215,22 @@
       "道徳教育"
     ],
     "edu": false
+  },
+  {
+    "link": "",
+    "display": "10.15066/00000556",
+    "tags": "社会教育",
+    "notes": "",
+    "source": "url",
+    "meta": {
+      "title": "",
+      "authors": "",
+      "year": "",
+      "journal": ""
+    },
+    "keywords": [
+      "社会教育"
+    ],
+    "edu": false
   }
 ]
