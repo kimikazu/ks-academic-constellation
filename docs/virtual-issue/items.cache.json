@@ -44,7 +44,7 @@
     "link": "https://hokuriku.repo.nii.ac.jp/records/2000246",
     "display": "https://hokuriku.repo.nii.ac.jp/records/2000246",
     "tags": "教育",
-    "notes": "",
+    "notes": "分野別",
     "source": "weko-json+edu",
     "meta": {
       "title": "公認心理師科目「心理演習」におけるAI を用いた 模擬症例生成",
@@ -59,5 +59,53 @@
       "ja"
     ],
     "edu": true
+  },
+  {
+    "link": "https://hokuriku.repo.nii.ac.jp/records/2000051",
+    "display": "https://hokuriku.repo.nii.ac.jp/records/2000051",
+    "tags": "教育",
+    "notes": "分野別",
+    "source": "weko-json+edu",
+    "meta": {
+      "title": "反転授業/ ピア・インストラクション/ 協働学習を 導入した物理化学講義の実践報告",
+      "authors": "齋藤大明, 杉森公一, 河内真美",
+      "year": "2023",
+      "journal": "北陸大学紀要"
+    },
+    "keywords": [
+      "active",
+      "learning",
+      "flipped",
+      "classroom",
+      "peer",
+      "instruction",
+      "collaborative",
+      "student",
+      "survey",
+      "analysis",
+      "en"
+    ],
+    "edu": true
+  },
+  {
+    "link": "https://doi.org/10.15066%2F00000637",
+    "display": "10.15066/00000637",
+    "tags": "教育",
+    "notes": "教育開発",
+    "source": "doi.org-csl",
+    "meta": {
+      "title": "ファカルティ・ラーニング・コミュニティの形成 ―対話型省察的実践のアクションリサーチ―",
+      "year": 2022,
+      "authors": "公一 杉森",
+      "journal": "北陸大学紀要 = Bulletin of Hokuriku University"
+    },
+    "keywords": [
+      "教育開発",
+      "ファカルティ",
+      "ラーニング",
+      "コミュニティの形成",
+      "―対話型省察的実践のアクションリサーチ―"
+    ],
+    "edu": false
   }
 ]
