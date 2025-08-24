@@ -107,5 +107,45 @@
       "―対話型省察的実践のアクションリサーチ―"
     ],
     "edu": false
+  },
+  {
+    "link": "https://hokuriku.repo.nii.ac.jp/records/2000212",
+    "display": "https://hokuriku.repo.nii.ac.jp/records/2000212",
+    "tags": "教育",
+    "notes": "学修支援",
+    "source": "weko-json",
+    "meta": {
+      "title": "初年次演習科目における教員と学生アシスタント （SA）の協働に関する実践 ―1 年次「基礎ゼミナール」の事例―",
+      "authors": "斎藤 英明, 篠原史成, 田部田晋",
+      "year": "2025",
+      "journal": "北陸大学紀要"
+    },
+    "keywords": [
+      "初年次教育",
+      "基礎ゼミナール",
+      "学生アシスタント",
+      "ja"
+    ],
+    "edu": false
+  },
+  {
+    "link": "https://hokuriku.repo.nii.ac.jp/records/2000221",
+    "display": "https://hokuriku.repo.nii.ac.jp/records/2000221",
+    "tags": "教育",
+    "notes": "留学生",
+    "source": "weko-json",
+    "meta": {
+      "title": "留学生防災教育の有効性と課題 ―2024 年度防災講習の実施とアンケート結果の分析を通して―",
+      "authors": "梅本佳子, 西浦真喜子",
+      "year": "2025",
+      "journal": "北陸大学紀要"
+    },
+    "keywords": [
+      "防災教育",
+      "留学生教育",
+      "地震災害対策",
+      "ja"
+    ],
+    "edu": false
   }
 ]
