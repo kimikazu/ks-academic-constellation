@@ -151,85 +151,107 @@
   {
     "link": "https://hokuriku.repo.nii.ac.jp/records/555",
     "display": "https://hokuriku.repo.nii.ac.jp/records/555",
-    "tags": "教育開発",
-    "notes": "",
-    "source": "url",
+    "tags": "教育",
+    "notes": "教育開発",
+    "source": "weko-json+edu",
     "meta": {
-      "title": "",
-      "authors": "",
-      "year": "",
-      "journal": ""
+      "title": "「自己教育力育成」のための日本語教師研修の試み",
+      "authors": "横田　, 隆志, ヨコタ, タカシ, Yokota, Takashi",
+      "year": "2019",
+      "journal": "北陸大学紀要"
     },
     "keywords": [
-      "教育開発"
+      "教師研修",
+      "日本語教育",
+      "自己教育能力",
+      "対話型教師研修",
+      "Other"
     ],
-    "edu": false
+    "edu": true
   },
   {
-    "link": "",
+    "link": "https://doi.org/10.15066%2F00000466",
     "display": "10.15066/00000466",
-    "tags": "教育開発",
-    "notes": "",
-    "source": "url",
+    "tags": "教育",
+    "notes": "教育開発",
+    "source": "doi.org-csl",
     "meta": {
-      "title": "",
-      "authors": "",
-      "year": "",
-      "journal": ""
+      "title": "The effective training for Non-Native Japanese language Teachers in Japan",
+      "year": 2017,
+      "authors": "隆志 横田",
+      "journal": "北陸大学紀要"
     },
     "keywords": [
-      "教育開発"
+      "教育開発",
+      "The",
+      "effective",
+      "training",
+      "for",
+      "Non",
+      "Native"
     ],
     "edu": false
   },
   {
-    "link": "",
+    "link": "https://doi.org/10.15066%2F00000013",
     "display": "10.15066/00000013",
-    "tags": "学修支援",
-    "notes": "",
-    "source": "url",
+    "tags": "教育",
+    "notes": "学修支援",
+    "source": "doi.org-csl",
     "meta": {
-      "title": "",
-      "authors": "",
-      "year": "",
-      "journal": ""
+      "title": "学力試験の成績を向上させる自己学習",
+      "year": 2008,
+      "authors": "まさのり 大本",
+      "journal": "北陸大学紀要"
     },
     "keywords": [
-      "学修支援"
+      "学修支援",
+      "学力試験の成績を向上させる自己学習"
     ],
     "edu": false
   },
   {
-    "link": "",
+    "link": "https://doi.org/10.15066%2F00000519",
     "display": "10.15066/00000519",
-    "tags": "道徳教育",
-    "notes": "",
-    "source": "url",
+    "tags": "教育",
+    "notes": "道徳教育",
+    "source": "doi.org-csl",
     "meta": {
-      "title": "",
-      "authors": "",
-      "year": "",
-      "journal": ""
+      "title": "Nurturing the power to learn utilizing the self-assessment - Toward solving problems of qualities and abilities to be nurtured -",
+      "year": 2019,
+      "authors": "安生 東風, Yasuo Kochi",
+      "journal": "北陸大学紀要"
     },
     "keywords": [
-      "道徳教育"
+      "道徳教育",
+      "Nurturing",
+      "the",
+      "power",
+      "to",
+      "learn",
+      "utilizing"
     ],
     "edu": false
   },
   {
-    "link": "",
+    "link": "https://doi.org/10.15066%2F00000556",
     "display": "10.15066/00000556",
-    "tags": "社会教育",
-    "notes": "",
-    "source": "url",
+    "tags": "教育",
+    "notes": "社会教育",
+    "source": "doi.org-csl",
     "meta": {
-      "title": "",
-      "authors": "",
-      "year": "",
-      "journal": ""
+      "title": "Toward the realization of a “curriculum open to society”—from the perspective of “connecting” children and adult －",
+      "year": 2020,
+      "authors": "栄一郎 板倉　, Eiichiro Itakura ",
+      "journal": "北陸大学紀要"
     },
     "keywords": [
-      "社会教育"
+      "社会教育",
+      "Toward",
+      "the",
+      "realization",
+      "of",
+      "“curriculum"
     ],
     "edu": false
   }
