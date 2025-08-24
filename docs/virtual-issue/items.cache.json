@@ -234,25 +234,54 @@
     "edu": false
   },
   {
-    "link": "https://doi.org/10.15066%2F00000556",
-    "display": "10.15066/00000556",
+    "link": "https://hokuriku.repo.nii.ac.jp/records/588",
+    "display": "https://hokuriku.repo.nii.ac.jp/records/588",
     "tags": "教育",
     "notes": "社会教育",
-    "source": "doi.org-csl",
+    "source": "weko-json+edu",
     "meta": {
-      "title": "Toward the realization of a “curriculum open to society”—from the perspective of “connecting” children and adult －",
-      "year": 2020,
-      "authors": "栄一郎 板倉　, Eiichiro Itakura ",
+      "title": "「社会に開かれた教育課程」の実現に向けて－子どもと大人を “ つなぐ ” という観点から－",
+      "authors": "板倉　, 栄一郎, イタクラ, エイイチロウ, Itakura , Eiichiro",
+      "year": "2020",
       "journal": "北陸大学紀要"
     },
     "keywords": [
-      "社会教育",
-      "Toward",
-      "the",
-      "realization",
-      "of",
-      "“curriculum"
+      "社会性の育成",
+      "戦後日本型循環モデル",
+      "子育て",
+      "しつけ",
+      "個と個の繋がり",
+      "adult-child",
+      "relationship",
+      "social",
+      "power",
+      "Parenting",
+      "and",
+      "discipline",
+      "Other",
+      "en"
     ],
-    "edu": false
+    "edu": true
+  },
+  {
+    "link": "https://hokuriku.repo.nii.ac.jp/records/2000108",
+    "display": "https://hokuriku.repo.nii.ac.jp/records/2000108",
+    "tags": "教育",
+    "notes": "学修支援",
+    "source": "weko-json+edu",
+    "meta": {
+      "title": "英語教員養成課程学生は授業の何を言語化したか ―英語科目のStudent Assistant 活動を通じて―",
+      "authors": "川村拓也",
+      "year": "2024",
+      "journal": "北陸大学紀要"
+    },
+    "keywords": [
+      "教師教育",
+      "授業観察",
+      "スチューデント",
+      "アシスタント（SA）",
+      "ja"
+    ],
+    "edu": true
   }
 ]
