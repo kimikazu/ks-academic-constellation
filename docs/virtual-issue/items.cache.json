@@ -174,21 +174,16 @@
     "display": "10.15066/00000466",
     "tags": "教育",
     "notes": "教育開発",
-    "source": "doi.org-csl",
+    "source": "weko-json+edu+doi",
     "meta": {
-      "title": "The effective training for Non-Native Japanese language Teachers in Japan",
+      "title": "日本におけるノンネイティブ日本語教師に対する効果的な研修",
       "year": 2017,
       "authors": "隆志 横田",
       "journal": "北陸大学紀要"
     },
     "keywords": [
-      "教育開発",
-      "The",
-      "effective",
-      "training",
-      "for",
-      "Non",
-      "Native"
+      "ノンネイティブ日本語教師｜教師研修",
+      "Other"
     ],
     "edu": false
   },
@@ -215,21 +210,19 @@
     "display": "10.15066/00000519",
     "tags": "教育",
     "notes": "道徳教育",
-    "source": "doi.org-csl",
+    "source": "weko-json+edu+doi",
     "meta": {
-      "title": "Nurturing the power to learn utilizing the self-assessment - Toward solving problems of qualities and abilities to be nurtured -",
+      "title": "自己評価を生かした学びに向かう力の育成―育成すべき資質・能力から見える課題解決へ向けて―",
       "year": 2019,
       "authors": "安生 東風, Yasuo Kochi",
       "journal": "北陸大学紀要"
     },
     "keywords": [
-      "道徳教育",
-      "Nurturing",
-      "the",
-      "power",
-      "to",
-      "learn",
-      "utilizing"
+      "教材活用",
+      "道徳ノート",
+      "評価",
+      "継続性",
+      "Other"
     ],
     "edu": false
   },
