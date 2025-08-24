@@ -147,5 +147,73 @@
       "ja"
     ],
     "edu": false
+  },
+  {
+    "link": "https://hokuriku.repo.nii.ac.jp/records/555",
+    "display": "https://hokuriku.repo.nii.ac.jp/records/555",
+    "tags": "教育開発",
+    "notes": "",
+    "source": "url",
+    "meta": {
+      "title": "",
+      "authors": "",
+      "year": "",
+      "journal": ""
+    },
+    "keywords": [
+      "教育開発"
+    ],
+    "edu": false
+  },
+  {
+    "link": "",
+    "display": "10.15066/00000466",
+    "tags": "教育開発",
+    "notes": "",
+    "source": "url",
+    "meta": {
+      "title": "",
+      "authors": "",
+      "year": "",
+      "journal": ""
+    },
+    "keywords": [
+      "教育開発"
+    ],
+    "edu": false
+  },
+  {
+    "link": "",
+    "display": "10.15066/00000013",
+    "tags": "学修支援",
+    "notes": "",
+    "source": "url",
+    "meta": {
+      "title": "",
+      "authors": "",
+      "year": "",
+      "journal": ""
+    },
+    "keywords": [
+      "学修支援"
+    ],
+    "edu": false
+  },
+  {
+    "link": "",
+    "display": "10.15066/00000519",
+    "tags": "道徳教育",
+    "notes": "",
+    "source": "url",
+    "meta": {
+      "title": "",
+      "authors": "",
+      "year": "",
+      "journal": ""
+    },
+    "keywords": [
+      "道徳教育"
+    ],
+    "edu": false
   }
 ]
