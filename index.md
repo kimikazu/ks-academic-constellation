@@ -1,5 +1,6 @@
 ---
 layout: home
+title: Research Constellations
 ---
 
 ## 教育開発
