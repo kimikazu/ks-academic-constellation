@@ -39,12 +39,12 @@ defaults:
       path: ""
       type: "notes"
     values:
-      layout: note
+      layout: page
   - scope:
       path: ""
       type: "links"
     values:
-      layout: link
+      layout: page
 
 # Navigation
 include:
