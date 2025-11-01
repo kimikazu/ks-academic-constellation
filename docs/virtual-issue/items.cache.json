@@ -199,7 +199,7 @@
       "ノンネイティブ日本語教師｜教師研修",
       "Other"
     ],
-    "edu": false
+    "edu": true
   },
   {
     "link": "https://doi.org/10.15066%2F00000519",
@@ -220,7 +220,7 @@
       "継続性",
       "Other"
     ],
-    "edu": false
+    "edu": true
   },
   {
     "link": "https://hokuriku.repo.nii.ac.jp/records/555",
@@ -366,7 +366,7 @@
       "Other",
       "en"
     ],
-    "edu": false
+    "edu": true
   },
   {
     "link": "https://doi.org/10.15066%2F00000637",
