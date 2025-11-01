@@ -238,10 +238,12 @@ async function metaDOI_tryLanding(doi){
       const doi = r.id && isDOI(r.id) ? r.id : r.url.replace(/^https?:\/\/doi\.org\//i,'');
       // まずAPI群
       let x = await metaDOI_fromAPIs(doi);
+      let edu = false;
 
       // タイトルが英語っぽい場合、日本語が取れるならランディングで補正
       if (!looksJa(x.meta.title)){
         const land = await metaDOI_tryLanding(doi);
+        if (land) edu = Boolean(land.edu);
         if (land && looksJa(land.meta.title)) {
           // 既存メタの欠損を補いつつ、タイトルだけ日本語で上書き
           x.meta.title = land.meta.title || x.meta.title;
@@ -257,7 +259,7 @@ async function metaDOI_tryLanding(doi){
       out.push({
         link:`https://doi.org/${encodeURIComponent(doi)}`,
         display:doi, tags:r.tags, notes:r.notes,
-        source:x.source, meta:x.meta, keywords:kw, edu:false
+        source:x.source, meta:x.meta, keywords:kw, edu
       });
 
     }else if (type==='weko'){
