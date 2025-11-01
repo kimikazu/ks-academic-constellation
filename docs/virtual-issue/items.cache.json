@@ -1,66 +1,5 @@
 [
   {
-    "link": "https://hokuriku.repo.nii.ac.jp/records/2000222",
-    "display": "https://hokuriku.repo.nii.ac.jp/records/2000222",
-    "tags": "教育",
-    "notes": "学修支援",
-    "source": "weko-json",
-    "meta": {
-      "title": "医療系教育におけるStudent Assistant 制度を 利用した学修支援の効果",
-      "authors": "小倉亮介, 杉森公一",
-      "year": "2025",
-      "journal": "北陸大学紀要"
-    },
-    "keywords": [
-      "学修支援",
-      "医療系教育",
-      "ja"
-    ],
-    "edu": false
-  },
-  {
-    "link": "https://hokuriku.repo.nii.ac.jp/records/578",
-    "display": "https://hokuriku.repo.nii.ac.jp/records/578",
-    "tags": "教育",
-    "notes": "宗教教育",
-    "source": "weko-json+edu",
-    "meta": {
-      "title": "道徳教育における宗教的情操  −『善の研究』における宗教と道徳の関係性から−",
-      "authors": "東風, 安生, コチ, ヤスオ, Kochi, Yasuo",
-      "year": "2019",
-      "journal": "北陸大学紀要"
-    },
-    "keywords": [
-      "宗教的情操",
-      "純粋体験",
-      "絶対無",
-      "サムシング",
-      "グレート",
-      "Other"
-    ],
-    "edu": true
-  },
-  {
-    "link": "https://hokuriku.repo.nii.ac.jp/records/2000246",
-    "display": "https://hokuriku.repo.nii.ac.jp/records/2000246",
-    "tags": "教育",
-    "notes": "分野別",
-    "source": "weko-json+edu",
-    "meta": {
-      "title": "公認心理師科目「心理演習」におけるAI を用いた 模擬症例生成",
-      "authors": "後藤和史",
-      "year": "2024",
-      "journal": "北陸大学紀要"
-    },
-    "keywords": [
-      "生成AI",
-      "大学教育",
-      "公認心理師",
-      "ja"
-    ],
-    "edu": true
-  },
-  {
     "link": "https://hokuriku.repo.nii.ac.jp/records/2000051",
     "display": "https://hokuriku.repo.nii.ac.jp/records/2000051",
     "tags": "教育",
@@ -88,25 +27,25 @@
     "edu": true
   },
   {
-    "link": "https://doi.org/10.15066%2F00000637",
-    "display": "10.15066/00000637",
+    "link": "https://hokuriku.repo.nii.ac.jp/records/2000108",
+    "display": "https://hokuriku.repo.nii.ac.jp/records/2000108",
     "tags": "教育",
-    "notes": "教育開発",
-    "source": "doi.org-csl",
+    "notes": "学修支援",
+    "source": "weko-json+edu",
     "meta": {
-      "title": "ファカルティ・ラーニング・コミュニティの形成 ―対話型省察的実践のアクションリサーチ―",
-      "year": 2022,
-      "authors": "公一 杉森",
-      "journal": "北陸大学紀要 = Bulletin of Hokuriku University"
+      "title": "英語教員養成課程学生は授業の何を言語化したか ―英語科目のStudent Assistant 活動を通じて―",
+      "authors": "川村拓也",
+      "year": "2024",
+      "journal": "北陸大学紀要"
     },
     "keywords": [
-      "教育開発",
-      "ファカルティ",
-      "ラーニング",
-      "コミュニティの形成",
-      "―対話型省察的実践のアクションリサーチ―"
+      "教師教育",
+      "授業観察",
+      "スチューデント",
+      "アシスタント（SA）",
+      "ja"
     ],
-    "edu": false
+    "edu": true
   },
   {
     "link": "https://hokuriku.repo.nii.ac.jp/records/2000212",
@@ -149,43 +88,64 @@
     "edu": false
   },
   {
-    "link": "https://hokuriku.repo.nii.ac.jp/records/555",
-    "display": "https://hokuriku.repo.nii.ac.jp/records/555",
+    "link": "https://hokuriku.repo.nii.ac.jp/records/2000222",
+    "display": "https://hokuriku.repo.nii.ac.jp/records/2000222",
     "tags": "教育",
-    "notes": "教育開発",
-    "source": "weko-json+edu",
+    "notes": "学修支援",
+    "source": "weko-json",
     "meta": {
-      "title": "「自己教育力育成」のための日本語教師研修の試み",
-      "authors": "横田　, 隆志, ヨコタ, タカシ, Yokota, Takashi",
-      "year": "2019",
+      "title": "医療系教育におけるStudent Assistant 制度を 利用した学修支援の効果",
+      "authors": "小倉亮介, 杉森公一",
+      "year": "2025",
       "journal": "北陸大学紀要"
     },
     "keywords": [
-      "教師研修",
-      "日本語教育",
-      "自己教育能力",
-      "対話型教師研修",
-      "Other"
+      "学修支援",
+      "医療系教育",
+      "ja"
+    ],
+    "edu": false
+  },
+  {
+    "link": "https://hokuriku.repo.nii.ac.jp/records/2000246",
+    "display": "https://hokuriku.repo.nii.ac.jp/records/2000246",
+    "tags": "教育",
+    "notes": "分野別",
+    "source": "weko-json+edu",
+    "meta": {
+      "title": "公認心理師科目「心理演習」におけるAI を用いた 模擬症例生成",
+      "authors": "後藤和史",
+      "year": "2024",
+      "journal": "北陸大学紀要"
+    },
+    "keywords": [
+      "生成AI",
+      "大学教育",
+      "公認心理師",
+      "ja"
     ],
     "edu": true
   },
   {
-    "link": "https://doi.org/10.15066%2F00000466",
-    "display": "10.15066/00000466",
+    "link": "https://hokuriku.repo.nii.ac.jp/records/2000294",
+    "display": "https://hokuriku.repo.nii.ac.jp/records/2000294",
     "tags": "教育",
-    "notes": "教育開発",
-    "source": "weko-json+edu+doi",
+    "notes": "分野別",
+    "source": "weko-json+edu",
     "meta": {
-      "title": "日本におけるノンネイティブ日本語教師に対する効果的な研修",
-      "year": 2017,
-      "authors": "隆志 横田",
+      "title": "ローカル大規模言語モデルを用いたレポート自動採点システムの開発と再現性の検証",
+      "authors": "田部田晋, 篠原史成, 斎藤英明, 丸山洋三",
+      "year": "2025",
       "journal": "北陸大学紀要"
     },
     "keywords": [
-      "ノンネイティブ日本語教師｜教師研修",
-      "Other"
+      "大規模言語モデル",
+      "(LLM)",
+      "レポート評価",
+      "自動採点システム",
+      "ja"
     ],
-    "edu": false
+    "edu": true
   },
   {
     "link": "https://doi.org/10.15066%2F00000013",
@@ -202,6 +162,42 @@
     "keywords": [
       "学修支援",
       "学力試験の成績を向上させる自己学習"
+    ],
+    "edu": false
+  },
+  {
+    "link": "https://doi.org/10.15066%2F00000458",
+    "display": "10.15066/00000458",
+    "tags": "教育",
+    "notes": "教育開発",
+    "source": "doi.org-csl",
+    "meta": {
+      "title": "教職志望学生のICT活用指導力向上をめざすマイクロティーチングの課題―動画を活用した授業実践の試みから―",
+      "year": 2017,
+      "authors": "秀敏 衛, 光一 歌川, 翔 鈴木",
+      "journal": "北陸大学紀要 = Bulletin of Hokuriku University"
+    },
+    "keywords": [
+      "教育開発",
+      "教職志望学生のICT活用指導力向上をめざすマイクロティーチングの課題―動画を活用した授業実践の試みから―"
+    ],
+    "edu": false
+  },
+  {
+    "link": "https://doi.org/10.15066%2F00000466",
+    "display": "10.15066/00000466",
+    "tags": "教育",
+    "notes": "教育開発",
+    "source": "weko-json+edu+doi",
+    "meta": {
+      "title": "日本におけるノンネイティブ日本語教師に対する効果的な研修",
+      "year": 2017,
+      "authors": "隆志 横田",
+      "journal": "北陸大学紀要"
+    },
+    "keywords": [
+      "ノンネイティブ日本語教師｜教師研修",
+      "Other"
     ],
     "edu": false
   },
@@ -225,6 +221,49 @@
       "Other"
     ],
     "edu": false
+  },
+  {
+    "link": "https://hokuriku.repo.nii.ac.jp/records/555",
+    "display": "https://hokuriku.repo.nii.ac.jp/records/555",
+    "tags": "教育",
+    "notes": "教育開発",
+    "source": "weko-json+edu",
+    "meta": {
+      "title": "「自己教育力育成」のための日本語教師研修の試み",
+      "authors": "横田　, 隆志, ヨコタ, タカシ, Yokota, Takashi",
+      "year": "2019",
+      "journal": "北陸大学紀要"
+    },
+    "keywords": [
+      "教師研修",
+      "日本語教育",
+      "自己教育能力",
+      "対話型教師研修",
+      "Other"
+    ],
+    "edu": true
+  },
+  {
+    "link": "https://hokuriku.repo.nii.ac.jp/records/578",
+    "display": "https://hokuriku.repo.nii.ac.jp/records/578",
+    "tags": "教育",
+    "notes": "宗教教育",
+    "source": "weko-json+edu",
+    "meta": {
+      "title": "道徳教育における宗教的情操  −『善の研究』における宗教と道徳の関係性から−",
+      "authors": "東風, 安生, コチ, ヤスオ, Kochi, Yasuo",
+      "year": "2019",
+      "journal": "北陸大学紀要"
+    },
+    "keywords": [
+      "宗教的情操",
+      "純粋体験",
+      "絶対無",
+      "サムシング",
+      "グレート",
+      "Other"
+    ],
+    "edu": true
   },
   {
     "link": "https://hokuriku.repo.nii.ac.jp/records/588",
@@ -257,24 +296,55 @@
     "edu": true
   },
   {
-    "link": "https://hokuriku.repo.nii.ac.jp/records/2000108",
-    "display": "https://hokuriku.repo.nii.ac.jp/records/2000108",
+    "link": "https://doi.org/10.15066%2F00000605",
+    "display": "10.15066/00000605",
     "tags": "教育",
-    "notes": "学修支援",
-    "source": "weko-json+edu",
+    "notes": "分野別",
+    "source": "weko-json+edu+doi",
     "meta": {
-      "title": "英語教員養成課程学生は授業の何を言語化したか ―英語科目のStudent Assistant 活動を通じて―",
-      "authors": "川村拓也",
-      "year": "2024",
+      "title": "薬学部低学年での文章作成（ライティング）プログラムの実践と学修成果－学生が成長を実感できる授業設計を目指して－",
+      "year": 2021,
+      "authors": "友佳子 畑　, ゆかり 池田, 聡一 木藤, 友紀 佐藤, 元子 中越, Yukako Hata, Yukari Ikeda　, Soh-ichi KITOH , Yuki Sato, Motoko Nakagoshi",
       "journal": "北陸大学紀要"
     },
     "keywords": [
-      "教師教育",
-      "授業観察",
-      "スチューデント",
-      "アシスタント（SA）",
-      "ja"
+      "低学年",
+      "文章作成（ライティング）プログラム",
+      "学修成果",
+      "成長実感",
+      "lower",
+      "grades",
+      "writing",
+      "program",
+      "learning",
+      "outcomes",
+      "feeling",
+      "of",
+      "growth",
+      "Other",
+      "en"
     ],
-    "edu": true
+    "edu": false
+  },
+  {
+    "link": "https://doi.org/10.15066%2F00000637",
+    "display": "10.15066/00000637",
+    "tags": "教育",
+    "notes": "教育開発",
+    "source": "doi.org-csl",
+    "meta": {
+      "title": "ファカルティ・ラーニング・コミュニティの形成 ―対話型省察的実践のアクションリサーチ―",
+      "year": 2022,
+      "authors": "公一 杉森",
+      "journal": "北陸大学紀要 = Bulletin of Hokuriku University"
+    },
+    "keywords": [
+      "教育開発",
+      "ファカルティ",
+      "ラーニング",
+      "コミュニティの形成",
+      "―対話型省察的実践のアクションリサーチ―"
+    ],
+    "edu": false
   }
 ]
