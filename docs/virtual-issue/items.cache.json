@@ -68,6 +68,25 @@
     "edu": true
   },
   {
+    "link": "https://hokuriku.repo.nii.ac.jp/records/2000213",
+    "display": "https://hokuriku.repo.nii.ac.jp/records/2000213",
+    "tags": "教育",
+    "notes": "分野別",
+    "source": "weko-json+edu",
+    "meta": {
+      "title": "北陸大学経済経営学部における 学生の現状に関する一考察",
+      "authors": "篠原史成, 斎藤 英明, 田部田晋",
+      "year": "2025",
+      "journal": "北陸大学紀要"
+    },
+    "keywords": [
+      "自己評価",
+      "満足感",
+      "ja"
+    ],
+    "edu": true
+  },
+  {
     "link": "https://hokuriku.repo.nii.ac.jp/records/2000221",
     "display": "https://hokuriku.repo.nii.ac.jp/records/2000221",
     "tags": "教育",
