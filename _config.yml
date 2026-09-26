@@ -69,9 +69,8 @@ minima:
 
 # --- フィード/サイトマップ ---
 feed:
-  collections:
+  collections:   # links は個別ページを持たないので配信しない / links have no pages, so no feed
     - notes
-    - links
   posts_limit: 50
 
 
