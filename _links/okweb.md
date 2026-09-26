@@ -1,5 +1,6 @@
 ---
-title: "Okuyama Lab"
+title: "Okumura Lab"
+title_ja: "奥村研究室"
 href: http://okweb.ims.ac.jp/
 category: Molecular Dynamics
 tags: [chemistry]
