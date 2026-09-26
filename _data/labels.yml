@@ -1,0 +1,19 @@
+# Bilingual labels used by layouts and index pages.
+# 表示ラベル（英語 / 日本語）。値を追加するときは en と ja の両方を書く。
+
+type:
+  note:       { en: "Note",       ja: "ノート" }
+  literature: { en: "Literature", ja: "文献メモ" }
+  concept:    { en: "Concept",    ja: "概念" }
+  conference: { en: "Conference", ja: "学会" }
+  diagram:    { en: "Diagram",    ja: "図解" }
+
+status:
+  seed:      { en: "Seed",      ja: "種",   hint: "Rough idea, may change a lot / 書きかけ・大きく変わりうる" }
+  growing:   { en: "Growing",   ja: "育成中", hint: "Being developed / 加筆中" }
+  evergreen: { en: "Evergreen", ja: "定着",  hint: "Stable, citable / 安定・参照可" }
+
+ui:
+  created: { en: "Created", ja: "作成" }
+  updated: { en: "Updated", ja: "更新" }
+  tags:    { en: "Tags",    ja: "タグ" }

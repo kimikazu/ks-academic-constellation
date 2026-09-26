@@ -2,3 +2,19 @@
 ---
 
 @import "{{ site.theme }}";
+
+// --- Notes (bilingual layout) ---
+.note-title-ja { font-size: 1.25rem; color: #555; margin: -0.5rem 0 0.75rem; }
+.note-meta span { margin-right: 0.5rem; }
+.note-badge {
+  display: inline-block; font-size: 0.8rem; padding: 0.05rem 0.5rem;
+  border: 1px solid #ccc; border-radius: 999px; margin-right: 0.4rem;
+}
+.note-status-seed      { border-color: #c9a227; }
+.note-status-growing   { border-color: #3a8d5c; }
+.note-status-evergreen { border-color: #2c6ea8; }
+.note-summary { color: #444; border-left: 3px solid #ddd; padding-left: 0.75rem; }
+.note-summary p { margin-bottom: 0.3rem; }
+.note-tags { margin-top: 2rem; font-size: 0.9rem; color: #555; }
+.note-list li { margin-bottom: 0.6rem; }
+.note-list .ja { color: #555; }

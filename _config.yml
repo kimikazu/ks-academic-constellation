@@ -1,7 +1,8 @@
 # --- サイト基本 ---
-title: "KS Research Notes & Portfolio"
-description: "Curated links and research notes"
-url: "https://kimikazu.github.io/"   # ← change USERNAME
+title: "KS Research Notes / 研究ノート"
+lang: ja
+description: "A living lab notebook: research notes, literature, and links — 研究ノート・文献メモ・リンク集"
+url: "https://kimikazu.github.io"
 baseurl: "/ks-academic-constellation"
 
 theme: minima
@@ -31,24 +32,32 @@ collections:
     output: true
     permalink: /notes/:name/
   links:
-    output: true
-    permalink: /links/:name/
+    output: false   # 外部リンクの台帳。個別ページは作らない / bookmark records only
 
 defaults:
   - scope:
       path: ""
       type: "notes"
     values:
-      layout: page
-  - scope:
-      path: ""
-      type: "links"
-    values:
-      layout: page
+      layout: note
+      type: note
+      status: seed
 
-# Navigation
-include:
-  - _pages
+# --- ヘッダーのナビゲーション（表示順）/ Header navigation order ---
+header_pages:
+  - notes/index.md
+  - links/index.md
+  - confs.md
+  - docs/concentric.md
+
+# --- ビルド対象外 / Excluded from the site ---
+exclude:
+  - README.md
+  - _templates/
+  - vendor/
+  - Gemfile
+  - Gemfile.lock
+  - node_modules/
 
 # Minima config (optional tweaks)
 minima:

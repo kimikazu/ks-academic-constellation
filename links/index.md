@@ -1,10 +1,11 @@
 ---
 layout: page
-title: Links
+title: "Links / リンク"
 permalink: /links/
 ---
 
-Curated link collections by category.
+Curated external links by category.
+分野別の外部リンク集です。
 
 {%- comment -%}
 カテゴリ未設定が混ざっても崩れないようにデフォルトカテゴリを当てる
@@ -27,6 +28,7 @@ Curated link collections by category.
     {%- endif -%}
     <li>
       <a href="{{ final }}"{{ extra }}>{{ item.title | default: '(no title)' }}</a>
+      {%- if item.title_ja and item.title_ja != item.title %} <span class="ja">／{{ item.title_ja }}</span>{% endif -%}
       {%- if item.tags and item.tags.size > 0 -%}
         <small> —
         {%- for t in item.tags -%}

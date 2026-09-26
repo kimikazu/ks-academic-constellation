@@ -1,6 +1,6 @@
 ---
 layout: page
-title: 大学教育開発・過去大会リソース
+title: "Past Conferences / 大学教育開発・過去大会リソース"
 permalink: /confs/
 ---
 

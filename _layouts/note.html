@@ -1,0 +1,39 @@
+---
+layout: default
+---
+{%- assign L = site.data.labels -%}
+{%- assign t = L.type[page.type] -%}
+{%- assign s = L.status[page.status] -%}
+<article class="post note">
+  <header class="post-header">
+    <h1 class="post-title">{{ page.title | escape }}</h1>
+    {%- if page.title_ja %}
+    <p class="note-title-ja">{{ page.title_ja | escape }}</p>
+    {%- endif %}
+    <p class="post-meta note-meta">
+      {%- if t %}<span class="note-badge">{{ t.en }} / {{ t.ja }}</span>{% endif -%}
+      {%- if s %}<span class="note-badge note-status-{{ page.status }}" title="{{ s.hint }}">{{ s.en }} / {{ s.ja }}</span>{% endif -%}
+      <span>{{ L.ui.created.en }} / {{ L.ui.created.ja }}: {{ page.date | date: site.minima.date_format }}</span>
+      {%- if page.updated %}
+      <span>· {{ L.ui.updated.en }} / {{ L.ui.updated.ja }}: {{ page.updated | date: site.minima.date_format }}</span>
+      {%- endif %}
+    </p>
+    {%- if page.summary or page.summary_ja %}
+    <div class="note-summary">
+      {%- if page.summary %}<p lang="en">{{ page.summary }}</p>{% endif -%}
+      {%- if page.summary_ja %}<p lang="ja">{{ page.summary_ja }}</p>{% endif -%}
+    </div>
+    {%- endif %}
+  </header>
+
+  <div class="post-content">
+    {{ content }}
+  </div>
+
+  {%- if page.tags and page.tags.size > 0 %}
+  <footer class="note-tags">
+    {{ L.ui.tags.en }} / {{ L.ui.tags.ja }}:
+    {% for tag in page.tags %}<code>{{ tag }}</code>{% unless forloop.last %}, {% endunless %}{% endfor %}
+  </footer>
+  {%- endif %}
+</article>
