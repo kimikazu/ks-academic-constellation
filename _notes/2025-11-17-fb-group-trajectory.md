@@ -1,3 +1,15 @@
+---
+title: "Trajectory of a Faculty Facebook Group (TEM)"
+title_ja: "大学教員FBグループの径路（TEM）"
+date: 2025-11-17
+type: diagram
+status: seed
+lang: ja
+tags: [faculty-development, community, tem]
+summary: "Trajectory Equifinality Model sketch of an online faculty community, 2020–2024."
+summary_ja: "2020〜2024年のオンライン教員コミュニティの歩みを TEM（複線径路等至性モデル）で描いた試作。"
+---
+
 ```mermaid
 flowchart LR
     %% 時間軸に沿った主径路（実線）
@@ -35,4 +47,3 @@ flowchart LR
     classDef alt stroke-dasharray: 5 5,stroke:#555,fill:#ffffff;
     class A1,A2,A3 alt;
 ```
-New File at notes · kimikazu/ks-academic-constellation
