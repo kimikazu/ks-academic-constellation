@@ -35,7 +35,7 @@ A working map of where North American educational development units publish: sho
 
 | Outlet / 媒体 | Issuer / 発行 | Notes / メモ |
 |---|---|---|
-| [Teaching Guides](https://cft.vanderbilt.edu/) | Vanderbilt University, Center for Teaching | Topic guides summarizing best practices, organized by principles, pedagogies, assessment, and contexts. / ベストプラクティスを要約したテーマ別ガイド。 |
+| [Teaching Guides](https://www.vanderbilt.edu/tav/) | Vanderbilt University, Teaching@Vanderbilt (formerly the Center for Teaching, now part of AdvancED) | Topic guides summarizing best practices: pedagogies, assessment, classroom challenges, and contexts. / ベストプラクティスを要約したテーマ別ガイド。旧 Center for Teaching の作成。 |
 | [Instructional Strategies](https://www.cmu.edu/teaching/designteach/teach/instructionalstrategies/index.html) | Carnegie Mellon University, Eberly Center | Strategies for lectures, discussions, case studies, labs, group projects, and more. / 講義・討論・ケース・実験・グループ課題などの方略。 |
 | [Teaching Tips (tip sheets)](https://uwaterloo.ca/centre-for-teaching-excellence/) | University of Waterloo, Centre for Teaching Excellence (Canada) | 100+ short, practical tip sheets, e.g. [Lecturing Effectively](https://uwaterloo.ca/centre-for-teaching-excellence/catalogs/tip-sheets/lecturing-effectively). / 100 以上の短い実践的ティップシート。 |
 
