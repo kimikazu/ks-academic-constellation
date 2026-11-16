@@ -18,8 +18,7 @@ Curated external links by category.
   {%- assign items = grp.items | sort: "title" -%}
   {%- for item in items -%}
     {%- assign href = item.href | default: item.url -%}
-    {%- assign is_external = href contains '://' -%}
-    {%- if is_external -%}
+    {%- if href contains '://' -%}
       {%- assign final = href -%}
       {%- assign extra = ' target="_blank" rel="noopener"' -%}
     {%- else -%}
